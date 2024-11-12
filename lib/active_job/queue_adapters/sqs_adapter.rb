@@ -6,12 +6,13 @@ require 'active_support/core_ext/object/deep_dup'
 
 module ActiveJob
   module QueueAdapters
-    # Set in rails config via config.active_job.queue_adapter = :sqs to use the SQS adapter
-    class SqsAdapter
-      def enqueue_after_transaction_commit?
-        true
-      end
-
+    # == Synchronous adapter for Amazon SQS ActiveJob
+    #
+    # This adapter queues jobs synchronously (ie blocking).
+    #
+    # To use this adapter, set up as:
+    #   config.active_job.queue_adapter = :sqs_async
+    class SqsAdapter < AbstractAdapter
       def enqueue(job)
         _enqueue(job)
       end

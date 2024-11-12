@@ -7,7 +7,7 @@ module Aws
     module SQS
       describe JobRunner do
         let(:job_data) { TestJob.new('a1', 'a2').serialize }
-        let(:body) { JSON.dump(job_data) }
+        let(:body) { Aws::Json.dump(job_data) }
         # message is a reserved minitest name
         let(:msg) { double(data: double(body: body)) }
 
