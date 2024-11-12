@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'active_job/queue_adapters/abstract_adapter'
 require_relative 'active_job/queue_adapters/sqs_adapter'
 require_relative 'active_job/queue_adapters/sqs_adapter/params'
 require_relative 'active_job/queue_adapters/sqs_async_adapter'
