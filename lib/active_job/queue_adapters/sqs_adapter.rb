@@ -46,6 +46,12 @@ module ActiveJob
         enqueued_count
       end
 
+      # @api private
+      # This can been removed in Rails 8.1
+      def enqueue_after_transaction_commit?
+        true
+      end
+
       private
 
       def _enqueue(job, body = nil, send_message_opts = {})

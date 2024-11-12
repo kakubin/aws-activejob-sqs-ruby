@@ -150,11 +150,7 @@ module Aws
 
         def config_file
           return unless defined?(::Rails)
-          file = ENV.fetch('SQS_ACTIVE_JOB_CONFIG_FILE', nil)
-          if ENV['AWS_SQS_ACTIVE_JOB_CONFIG_FILE']
-            Kernel.warn('AWS_SQS_ACTIVE_JOB_CONFIG_FILE is deprecated, please use SQS_ACTIVE_JOB_CONFIG_FILE')
-            file = ENV['AWS_SQS_ACTIVE_JOB_CONFIG_FILE']
-          end
+          file = ENV.fetch('AWS_SQS_ACTIVE_JOB_CONFIG_FILE', nil)
           file = ::Rails.root.join("config/aws_sqs_active_job/#{::Rails.env}.yml") unless file
           file = ::Rails.root.join('config/aws_sqs_active_job.yml') unless File.exist?(file)
           file

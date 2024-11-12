@@ -4,7 +4,6 @@
 require_relative '../lib/aws/active_job/sqs/poller'
 
 require 'rails'
-environment = ENV['APP_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
-require File.expand_path("config/environments/#{environment}.rb")
+require File.expand_path("config/environment.rb")
 
 Aws::ActiveJob::SQS::Poller.new(ARGV).run
