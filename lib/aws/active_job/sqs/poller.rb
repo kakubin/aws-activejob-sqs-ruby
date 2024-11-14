@@ -20,15 +20,26 @@ module Aws
           retry_standard_errors: true
         }.freeze
 
-        def initialize(args)
+        def initialize(args = ARGV)
           @options = parse_args(args)
+          # Set_environment must be run before we boot_rails
+          set_environment
+        end
+
+        def set_environment
+          @environment = @options[:environment] || ENV['APP_ENV'] || ENV['RAILS_ENV'] || ENV['RACK_ENV'] || 'development'
         end
 
         def run
+          # exit 0
+          boot_rails
+
+          # cannot load config (from file or initializers) until after
+          # rails has been booted.
           @options = DEFAULT_OPTS
                      .merge(Aws::ActiveJob::SQS.config.to_h)
                      .merge(@options.to_h)
-
+          validate_config
           # ensure we have a logger configured
           @logger = @options[:logger] || ActiveSupport::Logger.new($stdout)
           @logger.info("Starting Poller with options=#{@options}")
@@ -88,11 +99,21 @@ module Aws
           end
         end
 
+        def boot_rails
+          ENV['RACK_ENV'] = ENV['RAILS_ENV'] = @environment
+          require 'rails'
+          require File.expand_path('config/environment.rb')
+        end
+
         # rubocop:disable Metrics
         def parse_args(argv)
-          out = { queue: 'development' }
+          out = {}
           parser = ::OptionParser.new do |opts|
-            opts.on('-q', '--queue STRING', 'Queue to poll') { |a| out[:queue] = a }
+            opts.on('-q', '--queue STRING', '[Required] Queue to poll') { |a| out[:queue] = a }
+            opts.on('-e', '--environment STRING',
+                    'Rails environment (defaults to development). You can also use the APP_ENV or RAILS_ENV environment variables to specify the environment.') do |a|
+              out[:environment] = a
+            end
             opts.on('-t', '--threads INTEGER', Integer,
                     'The maximum number of worker threads to create.  Defaults to 2x the number of processors available on this system.') do |a|
               out[:threads] = a
@@ -129,6 +150,10 @@ module Aws
           out
         end
         # rubocop:enable Metrics
+
+        def validate_config
+          raise ArgumentError, 'You must specify the name of the queue to process jobs from' unless @options[:queue]
+        end
       end
     end
   end

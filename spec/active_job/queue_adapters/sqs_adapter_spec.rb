@@ -4,13 +4,8 @@ module ActiveJob
   module QueueAdapters
     describe SqsAdapter do
       let(:client) { double('Client') }
-
       before do
-        Aws::ActiveJob::SQS.configure do |config|
-          config.queues = { default: 'https://queue-url' }
-          config.client = client
-          config.logger = ActiveSupport::Logger.new(IO::NULL)
-        end
+        allow(Aws::ActiveJob::SQS.config).to receive(:client).and_return(client)
       end
 
       it 'enqueues jobs' do
@@ -191,33 +186,35 @@ module ActiveJob
         end
       end
 
-      describe 'with multiple jobs' do
-        before do
-          response = double('Response')
-          allow(response).to receive(:successful).and_return([1, 2])
-          allow(client).to receive(:send_message_batch).and_return(response)
-        end
+      if Gem::Version.new(Rails::VERSION::STRING) >= Gem::Version.new('7.1.0')
+        describe 'with multiple jobs' do
+          before do
+            response = double('Response')
+            allow(response).to receive(:successful).and_return([1, 2])
+            allow(client).to receive(:send_message_batch).and_return(response)
+          end
 
-        it do
-          expect(client).to receive(:send_message_batch).with(
-            {
-              queue_url: 'https://queue-url',
-              entries: [
-                {
-                  id: instance_of(String),
-                  message_body: instance_of(String),
-                  message_attributes: instance_of(Hash)
-                },
-                {
-                  id: instance_of(String),
-                  message_body: instance_of(String),
-                  message_attributes: instance_of(Hash)
-                }
-              ]
-            }
-          ).once
+          it do
+            expect(client).to receive(:send_message_batch).with(
+              {
+                queue_url: 'https://queue-url',
+                entries: [
+                  {
+                    id: instance_of(String),
+                    message_body: instance_of(String),
+                    message_attributes: instance_of(Hash)
+                  },
+                  {
+                    id: instance_of(String),
+                    message_body: instance_of(String),
+                    message_attributes: instance_of(Hash)
+                  }
+                ]
+              }
+            ).once
 
-          ActiveJob.perform_all_later(TestJob.new('test'), TestJob.new('test'))
+            ActiveJob.perform_all_later(TestJob.new('test'), TestJob.new('test'))
+          end
         end
       end
     end

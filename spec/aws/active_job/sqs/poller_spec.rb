@@ -8,20 +8,17 @@ module Aws
       describe Poller do
         let(:queue_poller) { double(Aws::SQS::QueuePoller) }
         let(:msg) { double('SQSMessage', receipt_handle: '1234') }
+        let(:logger) { double(info: nil) }
         let(:sqs_client) { Aws::SQS::Client.new(stub_responses: true) }
 
         before do
-          Aws::ActiveJob::SQS.configure do |config|
-            config.client = sqs_client
-            config.queues = { default: 'https://queue-url' }
-            config.max_messages = 5
-            config.logger = ActiveSupport::Logger.new(IO::NULL)
-          end
+          allow(ActiveSupport::Logger).to receive(:new).and_return(logger)
+          Aws::ActiveJob::SQS.config.client = sqs_client
         end
 
         describe '#initialize' do
           it 'parses args' do
-            poller = Poller.new(%w[--queue default -v 360])
+            poller = Poller.new(['--queue', 'default', '-v', '360'])
             parsed = poller.instance_variable_get(:@options)
             expect(parsed[:queue]).to eq 'default'
             expect(parsed[:visibility_timeout]).to eq 360
@@ -29,22 +26,24 @@ module Aws
         end
 
         describe '#run' do
-          let(:poller) { Poller.new(%w[--queue default -v 360]) }
+          let(:poller) { Poller.new(['--queue', 'default', '-v', '360']) }
 
-          # it 'boots rails' do
-          #   expect(poller).to receive(:require).with('rails')
-          #   expect(poller).to receive(:require).with(
-          #     File.expand_path('config/environment.rb')
-          #   )
-          #
-          #   allow(poller).to receive(:poll) # no-op the poll
-          #   poller.run
-          #
-          #   expect(ENV.fetch('RACK_ENV', nil)).to eq 'test'
-          #   expect(ENV.fetch('RAILS_ENV', nil)).to eq 'test'
-          # end
+          it 'boots rails' do
+            expect(poller).to receive(:require).with('rails')
+            expect(poller).to receive(:require).with(
+              File.expand_path('config/environment.rb')
+            )
+
+            allow(poller).to receive(:poll) # no-op the poll
+            poller.run
+
+            expect(ENV.fetch('RACK_ENV', nil)).to eq 'test'
+            expect(ENV.fetch('RAILS_ENV', nil)).to eq 'test'
+          end
 
           it 'merges args with loaded config' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
+
             allow(poller).to receive(:poll) # no-op the poll
             poller.run
 
@@ -55,6 +54,7 @@ module Aws
           end
 
           it 'polls the configured queue' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
             expect(Aws::SQS::QueuePoller).to receive(:new).with(
               'https://queue-url',
               { client: instance_of(Aws::SQS::Client) }
@@ -65,6 +65,7 @@ module Aws
           end
 
           it 'runs the poller with the configured options' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
             expect(Aws::SQS::QueuePoller).to receive(:new).and_return(queue_poller)
 
             expect(queue_poller).to receive(:poll).with(
@@ -79,6 +80,8 @@ module Aws
           end
 
           it 'sets max_number_of_messages to 1 for fifo queues' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
+
             allow(Aws::ActiveJob::SQS.config).to receive(:queue_url_for).and_return('https://queue-url.fifo')
             expect(Aws::SQS::QueuePoller).to receive(:new).and_return(queue_poller)
 
@@ -94,6 +97,8 @@ module Aws
           end
 
           it 'polls for messages and executes them' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
+
             executor = double(Executor)
             expect(Executor).to receive(:new).and_return(executor)
 
@@ -106,6 +111,8 @@ module Aws
           end
 
           it 'calls shutdown when interrupted' do
+            allow(poller).to receive(:boot_rails) # no-op the boot
+
             executor = double(Executor)
             expect(Executor).to receive(:new).and_return(executor)
 

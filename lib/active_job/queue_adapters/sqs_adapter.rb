@@ -2,8 +2,6 @@
 
 require 'aws-sdk-sqs'
 
-require 'active_support/core_ext/object/deep_dup'
-
 module ActiveJob
   module QueueAdapters
     # == Synchronous adapter for Amazon SQS ActiveJob
@@ -12,7 +10,12 @@ module ActiveJob
     #
     # To use this adapter, set up as:
     #   config.active_job.queue_adapter = :sqs_async
-    class SqsAdapter < AbstractAdapter
+    class SqsAdapter
+      def enqueue_after_transaction_commit?
+        # can be removed after Rails 8
+        true
+      end
+
       def enqueue(job)
         _enqueue(job)
       end
@@ -44,12 +47,6 @@ module ActiveJob
           end
         end
         enqueued_count
-      end
-
-      # @api private
-      # This can been removed in Rails 8.1
-      def enqueue_after_transaction_commit?
-        true
       end
 
       private

@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-require 'active_job'
-require 'aws-activejob-sqs'
+ENV['RAILS_ENV'] = 'test'
+
+require_relative 'dummy/config/application'
+
+Rails.application.initialize!
 
 class TestJob < ActiveJob::Base
   self.queue_adapter = :sqs

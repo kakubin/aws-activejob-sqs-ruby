@@ -6,11 +6,7 @@ module ActiveJob
       let(:client) { double('Client') }
 
       before do
-        Aws::ActiveJob::SQS.configure do |config|
-          config.queues = { default: 'https://queue-url' }
-          config.client = client
-          config.logger = ActiveSupport::Logger.new(IO::NULL)
-        end
+        allow(Aws::ActiveJob::SQS.config).to receive(:client).and_return(client)
       end
 
       def mock_send_message

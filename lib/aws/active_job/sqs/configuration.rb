@@ -2,7 +2,6 @@
 
 module Aws
   module ActiveJob
-    # Configuration for AWS ActiveJob SQS.
     module SQS
       # Use +Aws::ActiveJob::SQS.config+ to access the singleton config instance.
       class Configuration
@@ -13,7 +12,7 @@ module Aws
           shutdown_timeout: 15,
           retry_standard_errors: true, # TODO: Remove in next MV
           queues: {},
-          logger: ActiveSupport::Logger.new($stdout), # ::Rails.logger,
+          logger: ::Rails.logger,
           message_group_id: 'SqsActiveJobGroup',
           excluded_deduplication_keys: ['job_id']
         }.freeze
@@ -74,7 +73,7 @@ module Aws
         #  See the (SQS FIFO Documentation)[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues.html]
         #
         # @option options [Callable] :async_queue_error_handler An error handler
-        #   to be called when the async active job adapter experiences an error
+        #   to be called when the async active job adapter experiances an error
         #   queueing a job.  Only applies when
         #   +active_job.queue_adapter = :sqs_async+.  Called with:
         #   [error, job, job_options]
@@ -87,7 +86,7 @@ module Aws
         #   Using this option, job_id is implicitly added to the keys.
 
         def initialize(options = {})
-          options[:config_file] ||= config_file
+          options[:config_file] ||= config_file if File.exist?(config_file)
           options = DEFAULTS
                     .merge(file_options(options))
                     .merge(options)
@@ -136,22 +135,21 @@ module Aws
         def set_attributes(options)
           options.each_key do |opt_name|
             instance_variable_set("@#{opt_name}", options[opt_name])
-            client.config.user_agent_frameworks << 'aws-sdk-rails' if opt_name == :client
+            client.config.user_agent_frameworks << 'aws-activejob-sqs' if opt_name == :client
           end
         end
 
         def file_options(options = {})
-          if options[:config_file]
-            load_from_file(options[:config_file])
+          file_path = config_file_path(options)
+          if file_path
+            load_from_file(file_path)
           else
             {}
           end
         end
 
         def config_file
-          return unless defined?(::Rails)
-          file = ENV.fetch('AWS_SQS_ACTIVE_JOB_CONFIG_FILE', nil)
-          file = ::Rails.root.join("config/aws_sqs_active_job/#{::Rails.env}.yml") unless file
+          file = ::Rails.root.join("config/aws_sqs_active_job/#{::Rails.env}.yml")
           file = ::Rails.root.join('config/aws_sqs_active_job.yml') unless File.exist?(file)
           file
         end
@@ -160,6 +158,11 @@ module Aws
         def load_from_file(file_path)
           opts = load_yaml(file_path) || {}
           opts.deep_symbolize_keys
+        end
+
+        # @return [String] Configuration path found in environment or YAML file.
+        def config_file_path(options)
+          options[:config_file] || ENV.fetch('AWS_SQS_ACTIVE_JOB_CONFIG_FILE', nil)
         end
 
         def load_yaml(file_path)

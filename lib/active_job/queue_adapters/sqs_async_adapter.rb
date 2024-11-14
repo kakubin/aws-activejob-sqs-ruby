@@ -24,11 +24,12 @@ module ActiveJob
         else
           # Serialize is called here because the job’s locale needs to be
           # determined in this thread and not in some other thread.
-          body = job.serialize # body is not a dead store
+          body = job.serialize
           Concurrent::Promises
-            .future { super }
+            .future { super(job, body, send_message_opts) }
             .rescue do |e|
-              Aws::ActiveJob::SQS.config.logger.error "Failed to queue job #{job}. Reason: #{e}"
+              # TODO: should be config logger? fails
+              Rails.logger.error "Failed to queue job #{job}. Reason: #{e}"
               error_handler = Aws::ActiveJob::SQS.config.async_queue_error_handler
               error_handler&.call(e, job, send_message_opts)
             end

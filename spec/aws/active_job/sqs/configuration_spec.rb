@@ -24,33 +24,17 @@ module Aws
         end
 
         it 'merges YAML options with default options' do
-          Tempfile.create('active_job_sqs_config.yml') do |f|
-            f << <<~YAML
-              max_messages: 5
-              queues:
-                default: 'https://queue-url'
-            YAML
-            f.rewind
-            cfg = Aws::ActiveJob::SQS::Configuration.new(config_file: f.path)
-            expected = Aws::ActiveJob::SQS::Configuration::DEFAULTS.merge(expected_file_opts)
-            expect(cfg.to_h).to include(expected)
-          end
+          cfg = Aws::ActiveJob::SQS::Configuration.new
+          expected = Aws::ActiveJob::SQS::Configuration::DEFAULTS.merge(expected_file_opts)
+          expect(cfg.to_h).to include(expected)
         end
 
         it 'merges runtime options with YAML options' do
-          Tempfile.create('active_job_sqs_config.yml') do |f|
-            f << <<~YAML
-              max_messages: 5
-              queues:
-                default: 'https://queue-url'
-            YAML
-            f.rewind
-            cfg = Aws::ActiveJob::SQS::Configuration.new(config_file: f.path, shutdown_timeout: 360)
-            expected = Aws::ActiveJob::SQS::Configuration::DEFAULTS
-                       .merge(expected_file_opts)
-                       .merge(shutdown_timeout: 360)
-            expect(cfg.to_h).to include(expected)
-          end
+          cfg = Aws::ActiveJob::SQS::Configuration.new(shutdown_timeout: 360)
+          expected = Aws::ActiveJob::SQS::Configuration::DEFAULTS
+                     .merge(expected_file_opts)
+                     .merge(shutdown_timeout: 360)
+          expect(cfg.to_h).to include(expected)
         end
 
         # For Ruby 3.1+, Psych 4 will normally raise BadAlias error

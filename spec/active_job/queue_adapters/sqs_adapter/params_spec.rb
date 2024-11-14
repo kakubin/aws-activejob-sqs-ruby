@@ -4,12 +4,6 @@ module ActiveJob
   module QueueAdapters
     class SqsAdapter
       describe Params do
-        before do
-          Aws::ActiveJob::SQS.configure do |config|
-            config.queues = { default: 'https://queue-url' }
-          end
-        end
-
         describe '.assured_delay_seconds' do
           let(:now) { Time.now }
 
