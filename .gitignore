@@ -1,0 +1,6 @@
+.idea/
+Gemfile.lock
+gemfiles/*.gemfile.lock
+
+spec/dummy/log/
+spec/dummy/tmp/

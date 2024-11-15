@@ -1,0 +1,23 @@
+inherit_from: .rubocop_todo.yml
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 2.7
+  SuggestExtensions: false
+
+Gemspec/RequireMFA:
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*.rb'
+
+Naming/FileName:
+  Exclude:
+    - 'gemfiles/*.gemfile'
+    - 'lib/aws-activejob-sqs.rb'
+    - 'spec/aws-activejob-sqs_spec.rb'
+
+Style/BlockComments:
+  Exclude:
+    - 'spec/spec_helper.rb'
