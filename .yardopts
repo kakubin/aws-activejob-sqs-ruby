@@ -1,0 +1,4 @@
+--title 'ActiveJob SQS'
+--template-path doc-src/templates
+--plugin sitemap
+--hide-api private

@@ -14,11 +14,11 @@ Gem::Specification.new do |spec|
   spec.files        = Dir['LICENSE', 'CHANGELOG.md', 'VERSION', 'lib/**/*']
   spec.executables  = ['aws_sqs_active_job']
 
-  spec.add_dependency('activejob', '>= 7.1.0')
-  spec.add_dependency('concurrent-ruby', '~> 1')
-
   # Require this version for user_agent_framework configs
   spec.add_dependency('aws-sdk-sqs', '~> 1', '>= 1.56.0')
+
+  spec.add_dependency('activejob', '>= 7.1.0')
+  spec.add_dependency('concurrent-ruby', '~> 1')
 
   spec.required_ruby_version = '>= 2.7'
 end
