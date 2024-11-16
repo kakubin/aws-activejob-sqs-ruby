@@ -16,7 +16,6 @@ Metrics/BlockLength:
 
 Naming/FileName:
   Exclude:
-    - 'gemfiles/*.gemfile'
     - 'lib/aws-activejob-sqs.rb'
     - 'spec/aws-activejob-sqs_spec.rb'
 
