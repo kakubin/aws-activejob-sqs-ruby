@@ -3,7 +3,8 @@
 module ActiveJob
   module QueueAdapters
     class SqsAdapter
-      # == build request parameter of Aws::SQS::Client
+      # Build request parameter of Aws::SQS::Client
+      # @api private
       class Params
         class << self
           def assured_delay_seconds(timestamp)

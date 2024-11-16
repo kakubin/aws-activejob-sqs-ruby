@@ -4,12 +4,11 @@ require 'aws-sdk-sqs'
 
 module ActiveJob
   module QueueAdapters
-    # == Synchronous adapter for Amazon SQS ActiveJob
-    #
-    # This adapter queues jobs synchronously (ie blocking).
+    # Synchronous adapter for Amazon SQS ActiveJob. This adapter queues jobs synchronously (ie blocking).
     #
     # To use this adapter, set up as:
-    #   config.active_job.queue_adapter = :sqs_async
+    #
+    #     config.active_job.queue_adapter = :sqs_async
     class SqsAdapter
       def enqueue_after_transaction_commit?
         # can be removed after Rails 8

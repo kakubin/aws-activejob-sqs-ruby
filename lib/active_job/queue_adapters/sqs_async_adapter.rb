@@ -5,14 +5,15 @@ require 'concurrent'
 
 module ActiveJob
   module QueueAdapters
-    # == Asynchronous adapter for Amazon SQS ActiveJob
+    # Asynchronous adapter for Amazon SQS ActiveJob This adapter queues jobs asynchronously (ie non-blocking).
     #
-    # This adapter queues jobs asynchronously (ie non-blocking).
     # An error handler can be configured with:
-    #   Aws::ActiveJob::SQS.config.async_queue_error_handler = ->(error, job, send_message_opts) { ... }
+    #
+    #     Aws::ActiveJob::SQS.config.async_queue_error_handler = ->(error, job, send_message_opts) { ... }
     #
     # To use this adapter, set up as:
-    #   config.active_job.queue_adapter = :sqs_async
+    #
+    #     config.active_job.queue_adapter = :sqs_async
     class SqsAsyncAdapter < SqsAdapter
       private
 
