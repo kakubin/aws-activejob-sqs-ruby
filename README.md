@@ -1,6 +1,6 @@
 # ActiveJob with Amazon Simple Queue Service
 
-[![Gem Version](https://badge.fury.io/rb/aws-activejob-sqs-ruby.svg)](https://badge.fury.io/rb/aws-activejob-sqs-ruby)
+[![Gem Version](https://badge.fury.io/rb/aws-activejob-sqs.svg)](https://badge.fury.io/rb/aws-activejob-sqs)
 [![Build Status](https://github.com/aws/aws-activejob-sqs-ruby/workflows/CI/badge.svg)](https://github.com/aws/aws-activejob-sqs-ruby/actions)
 [![Github forks](https://img.shields.io/github/forks/aws/aws-activejob-sqs-ruby.svg)](https://github.com/aws/aws-activejob-sqs-ruby/network)
 [![Github stars](https://img.shields.io/github/stars/aws/aws-activejob-sqs-ruby.svg)](https://github.com/aws/aws-activejob-sqs-ruby/stargazers)
