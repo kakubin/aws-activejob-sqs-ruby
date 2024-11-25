@@ -7,7 +7,7 @@ module Aws
         let(:expected_file_opts) do
           {
             max_messages: 5,
-            queues: { default: 'https://queue-url' }
+            queues: { default: { url: 'https://queue-url' } }
           }
         end
 
@@ -41,7 +41,8 @@ module Aws
         it 'accepts YAML config with alias' do
           allow_any_instance_of(ERB).to receive(:result).and_return(<<~YAML)
             common: &common
-              default: 'https://queue-url'
+              default: 
+                url: 'https://queue-url'
             queues:
               <<: *common
           YAML

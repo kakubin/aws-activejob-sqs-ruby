@@ -17,6 +17,16 @@ module Aws
           excluded_deduplication_keys: ['job_id']
         }.freeze
 
+        GLOBAL_CONFIGS = %i[
+          max_messages shutdown_timeout
+          visibility_timeout message_group_id
+        ].freeze
+
+        QUEUE_CONFIGS = %i[
+          url max_messages
+          visibility_timeout message_group_id
+        ].freeze
+
         # @api private
         attr_accessor :queues, :max_messages, :visibility_timeout,
                       :shutdown_timeout, :client, :logger,
@@ -87,10 +97,13 @@ module Aws
 
         def initialize(options = {})
           options[:config_file] ||= config_file if File.exist?(config_file)
-          options = DEFAULTS
+          resolved = DEFAULTS
                     .merge(file_options(options))
+
+          resolved = resolved
+                    .merge(env_options(resolved))
                     .merge(options)
-          set_attributes(options)
+          set_attributes(resolved)
         end
 
         def excluded_deduplication_keys=(keys)
@@ -139,12 +152,29 @@ module Aws
           end
         end
 
+        # resolve ENV for global and queue specific options
+        def env_options(options)
+          resolved = {}
+          GLOBAL_CONFIGS.each do |cfg|
+            env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
+            resolved[cfg] = ENV[env_name] if ENV.key? env_name
+          end
+          options[:queues]&.each_key do |queue|
+            resolved[queue] = {}
+            QUEUE_CONFIGS.each do |cfg|
+              env_name = "AWS_ACTIVE_JOB_SQS_#{queue.upcase}_#{cfg.to_s.upcase}"
+              resolved[queue][cfg] = ENV[env_name] if ENV.key? env_name
+            end
+          end
+          resolved
+        end
+
         def file_options(options = {})
           file_path = config_file_path(options)
           if file_path
             load_from_file(file_path)
           else
-            {}
+            options
           end
         end
 
@@ -162,7 +192,7 @@ module Aws
 
         # @return [String] Configuration path found in environment or YAML file.
         def config_file_path(options)
-          options[:config_file] || ENV.fetch('AWS_SQS_ACTIVE_JOB_CONFIG_FILE', nil)
+          options[:config_file] || ENV.fetch('AWS_ACTIVE_JOB_SQS_CONFIG_FILE', nil)
         end
 
         def load_yaml(file_path)
