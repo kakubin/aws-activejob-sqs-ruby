@@ -17,7 +17,7 @@ module Aws
         end
 
         describe '#execute' do
-          let(:body) { Aws::Json.dump(TestJob.new('a1', 'a2').serialize) }
+          let(:body) { ActiveSupport::JSON.dump(TestJob.new('a1', 'a2').serialize) }
           # message is a reserved minitest name
           let(:msg) { double(data: double(body: body)) }
           let(:executor) { Executor.new }

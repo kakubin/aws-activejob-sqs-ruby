@@ -37,7 +37,7 @@ module ActiveJob
 
         def default_entry
           {
-            message_body: Aws::Json.dump(@body),
+            message_body: ActiveSupport::JSON.dump(@body),
             message_attributes: message_attributes
           }
         end
@@ -58,7 +58,7 @@ module ActiveJob
         def options_for_fifo
           options = {}
           options[:message_deduplication_id] =
-            Digest::SHA256.hexdigest(Aws::Json.dump(deduplication_body))
+            Digest::SHA256.hexdigest(ActiveSupport::JSON.dump(deduplication_body))
 
           message_group_id = @job.message_group_id if @job.respond_to?(:message_group_id)
           message_group_id ||= Aws::ActiveJob::SQS.config.message_group_id

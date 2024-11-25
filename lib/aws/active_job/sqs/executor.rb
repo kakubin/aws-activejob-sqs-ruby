@@ -52,7 +52,7 @@ module Aws
             @logger.info("Running job: #{job.id}[#{job.class_name}]")
             job.run
             message.delete
-          rescue Aws::Json::ParseError => e
+          rescue JSON::ParserError => e
             @logger.error "Unable to parse message body: #{message.data.body}. Error: #{e}."
           rescue StandardError => e
             job_msg = job ? "#{job.id}[#{job.class_name}]" : 'unknown job'
