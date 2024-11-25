@@ -68,7 +68,7 @@ module Aws
 
           let(:cfg) do
             Aws::ActiveJob::SQS::Configuration.new(
-              queues: { default: queue_url }
+              queues: { default: { url: queue_url } }
             )
           end
 

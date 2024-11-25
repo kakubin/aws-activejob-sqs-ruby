@@ -37,6 +37,10 @@ module Aws
         # Don't use this method directly: Configuration is a singleton class, use
         # +Aws::ActiveJob::SQS.config+ to access the singleton config.
         #
+        # This class provides a Configuration object for AWS ActiveJob
+        # by pulling configuration options from Runtime, the ENV, a YAML file,
+        # and default settings, in that order.
+        #
         # @param [Hash] options
         # @option options [Hash[Symbol, String]] :queues A mapping between the
         #   active job queue name and the SQS Queue URL. Note: multiple active
@@ -60,7 +64,7 @@ module Aws
         #   will not be deleted from the SQS queue and will be retryable after
         #   the visibility timeout.
         #
-        # @ option options [Boolean] :retry_standard_errors
+        # @option options [Boolean] :retry_standard_errors
         #   If `true`, StandardErrors raised by ActiveJobs are left on the queue
         #   and will be retried (pending the SQS Queue's redrive/DLQ/maximum receive settings).
         #   This behavior overrides the standard Rails ActiveJob
@@ -120,10 +124,23 @@ module Aws
 
         # Return the queue_url for a given job_queue name
         def queue_url_for(job_queue)
-          job_queue = job_queue.to_sym
-          raise ArgumentError, "No queue defined for #{job_queue}" unless queues.key? job_queue
+          attribute_for(:url, job_queue)
+        end
 
-          queues[job_queue]
+        def max_messages_for(job_queue)
+          attribute_for(:max_messages, job_queue)
+        end
+
+        def visibility_timeout_for(job_queue)
+          attribute_for(:visibility_timeout, job_queue)
+        end
+
+        def message_group_id_for(job_queue)
+          attribute_for(:message_group_id, job_queue)
+        end
+
+        def excluded_deduplication_keys_for(job_queue)
+          attribute_for(:excluded_deduplication_keys, job_queue)
         end
 
         # @api private
@@ -152,21 +169,36 @@ module Aws
           end
         end
 
+        def attribute_for(attribute, job_queue)
+          job_queue = job_queue.to_sym
+          raise ArgumentError, "No queue defined for #{job_queue}" unless queues.key? job_queue
+
+          queues[job_queue][attribute]
+        end
+
         # resolve ENV for global and queue specific options
         def env_options(options)
           resolved = {}
           GLOBAL_CONFIGS.each do |cfg|
             env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
-            resolved[cfg] = ENV[env_name] if ENV.key? env_name
+            resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
           end
           options[:queues]&.each_key do |queue|
-            resolved[queue] = {}
+            resolved[:queues] ||= {}
+            resolved[:queues][queue] = options[:queues][queue].dup
             QUEUE_CONFIGS.each do |cfg|
               env_name = "AWS_ACTIVE_JOB_SQS_#{queue.upcase}_#{cfg.to_s.upcase}"
-              resolved[queue][cfg] = ENV[env_name] if ENV.key? env_name
+              resolved[:queues][queue][cfg] = parse_env_value(env_name) if ENV.key? env_name
             end
           end
           resolved
+        end
+
+        def parse_env_value(key)
+          val = ENV.fetch(key, nil)
+          Integer(val)
+        rescue ArgumentError, TypeError
+          %w[true false].include?(val) ? val == 'true' : val
         end
 
         def file_options(options = {})
