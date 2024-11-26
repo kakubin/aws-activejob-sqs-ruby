@@ -41,7 +41,7 @@ module Aws
         it 'accepts YAML config with alias' do
           allow_any_instance_of(ERB).to receive(:result).and_return(<<~YAML)
             common: &common
-              default: 
+              default:
                 url: 'https://queue-url'
             queues:
               <<: *common

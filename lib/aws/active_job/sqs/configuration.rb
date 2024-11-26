@@ -28,11 +28,9 @@ module Aws
         ].freeze
 
         # @api private
-        attr_accessor :queues, :max_messages, :visibility_timeout,
+        attr_accessor :queues,
                       :shutdown_timeout, :client, :logger,
-                      :async_queue_error_handler, :message_group_id
-
-        attr_reader :excluded_deduplication_keys
+                      :async_queue_error_handler
 
         # Don't use this method directly: Configuration is a singleton class, use
         # +Aws::ActiveJob::SQS.config+ to access the singleton config.
@@ -42,9 +40,13 @@ module Aws
         # and default settings, in that order.
         #
         # @param [Hash] options
-        # @option options [Hash[Symbol, String]] :queues A mapping between the
-        #   active job queue name and the SQS Queue URL. Note: multiple active
-        #   job queues can map to the same SQS Queue URL.
+        # @option options [Hash[Symbol, Hash]] :queues A mapping between the
+        #   active job queue name and the queue properties. Valid properties
+        #   are: url [Required], max_messages, shutdown_timeout,
+        #   message_group_id, and :excluded_deduplication_keys. Values
+        #   configured on the queue are used preferentially to the global
+        #   values.
+        #   Note: multiple active job queues can map to the same SQS Queue URL.
         #
         # @option options  [Integer] :max_messages
         #    The max number of messages to poll for in a batch.
@@ -87,7 +89,7 @@ module Aws
         #  See the (SQS FIFO Documentation)[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues.html]
         #
         # @option options [Callable] :async_queue_error_handler An error handler
-        #   to be called when the async active job adapter experiances an error
+        #   to be called when the async active job adapter experiences an error
         #   queueing a job.  Only applies when
         #   +active_job.queue_adapter = :sqs_async+.  Called with:
         #   [error, job, job_options]
@@ -110,6 +112,13 @@ module Aws
           set_attributes(resolved)
         end
 
+        # @api private
+        attr_accessor :queues, :max_messages, :visibility_timeout,
+                      :shutdown_timeout, :client, :logger,
+                      :async_queue_error_handler, :message_group_id
+
+        attr_reader :excluded_deduplication_keys
+
         def excluded_deduplication_keys=(keys)
           @excluded_deduplication_keys = keys.map(&:to_s) | ['job_id']
         end
@@ -124,23 +133,23 @@ module Aws
 
         # Return the queue_url for a given job_queue name
         def queue_url_for(job_queue)
-          attribute_for(:url, job_queue)
+          queue_attribute_for(:url, job_queue)
         end
 
         def max_messages_for(job_queue)
-          attribute_for(:max_messages, job_queue)
+          queue_attribute_for(:max_messages, job_queue)
         end
 
         def visibility_timeout_for(job_queue)
-          attribute_for(:visibility_timeout, job_queue)
+          queue_attribute_for(:visibility_timeout, job_queue)
         end
 
         def message_group_id_for(job_queue)
-          attribute_for(:message_group_id, job_queue)
+          queue_attribute_for(:message_group_id, job_queue)
         end
 
         def excluded_deduplication_keys_for(job_queue)
-          attribute_for(:excluded_deduplication_keys, job_queue)
+          queue_attribute_for(:excluded_deduplication_keys, job_queue)
         end
 
         # @api private
@@ -161,19 +170,19 @@ module Aws
 
         private
 
+        def queue_attribute_for(attribute, job_queue)
+          job_queue = job_queue.to_sym
+          raise ArgumentError, "No queue defined for #{job_queue}" unless queues.key? job_queue
+
+          queues[job_queue][attribute] || instance_variable_get("@#{attribute}")
+        end
+
         # Set accessible attributes after merged options.
         def set_attributes(options)
           options.each_key do |opt_name|
             instance_variable_set("@#{opt_name}", options[opt_name])
             client.config.user_agent_frameworks << 'aws-activejob-sqs' if opt_name == :client
           end
-        end
-
-        def attribute_for(attribute, job_queue)
-          job_queue = job_queue.to_sym
-          raise ArgumentError, "No queue defined for #{job_queue}" unless queues.key? job_queue
-
-          queues[job_queue][attribute]
         end
 
         # resolve ENV for global and queue specific options
