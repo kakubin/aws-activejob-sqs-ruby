@@ -23,7 +23,7 @@ module ActiveJob
 
       describe 'fifo queues' do
         before do
-          allow(Aws::ActiveJob::SQS.config).to receive(:queue_url_for).and_return('https://queue-url.fifo')
+          allow(Aws::ActiveJob::SQS.config).to receive(:url_for).and_return('https://queue-url.fifo')
         end
 
         it 'adds message_deduplication_id and default message_group_id if job does not override it' do

@@ -27,7 +27,7 @@ module ActiveJob
       def enqueue_all(jobs)
         enqueued_count = 0
         jobs.group_by(&:queue_name).each do |queue_name, same_queue_jobs|
-          queue_url = Aws::ActiveJob::SQS.config.queue_url_for(queue_name)
+          queue_url = Aws::ActiveJob::SQS.config.url_for(queue_name)
           base_send_message_opts = { queue_url: queue_url }
 
           same_queue_jobs.each_slice(10) do |chunk|

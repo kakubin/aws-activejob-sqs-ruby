@@ -22,7 +22,7 @@ module ActiveJob
         end
 
         def queue_url
-          @queue_url ||= Aws::ActiveJob::SQS.config.queue_url_for(@job.queue_name)
+          @queue_url ||= Aws::ActiveJob::SQS.config.url_for(@job.queue_name)
         end
 
         def entry

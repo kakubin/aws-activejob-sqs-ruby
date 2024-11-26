@@ -67,7 +67,7 @@ module Aws
         end
 
         def poll
-          queue_url = Aws::ActiveJob::SQS.config.queue_url_for(@options[:queue])
+          queue_url = Aws::ActiveJob::SQS.config.url_for(@options[:queue])
           @logger.info "Polling on: #{@options[:queue]} => #{queue_url}"
           client = Aws::ActiveJob::SQS.config.client
           @poller = Aws::SQS::QueuePoller.new(queue_url, client: client)

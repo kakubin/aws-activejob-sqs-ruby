@@ -2,3 +2,4 @@ max_messages: 5
 queues:
   default:
     url: 'https://queue-url'
+    max_messages: 2

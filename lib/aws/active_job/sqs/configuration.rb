@@ -17,12 +17,12 @@ module Aws
           excluded_deduplication_keys: ['job_id']
         }.freeze
 
-        GLOBAL_CONFIGS = %i[
+        GLOBAL_ENV_CONFIGS = %i[
           max_messages shutdown_timeout
           visibility_timeout message_group_id
         ].freeze
 
-        QUEUE_CONFIGS = %i[
+        QUEUE_ENV_CONFIGS = %i[
           url max_messages
           visibility_timeout message_group_id
         ].freeze
@@ -37,7 +37,17 @@ module Aws
         #
         # This class provides a Configuration object for AWS ActiveJob
         # by pulling configuration options from Runtime, the ENV, a YAML file,
-        # and default settings, in that order.
+        # and default settings, in that order. Values set on queues are used
+        # preferentially to global values.
+        #
+        # # Environment Variables
+        # The Configuration loads global and queue specific values from your
+        # environment. Global keys take the form of:
+        # `AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
+        # form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`. Example:
+        #
+        #     export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
+        #     export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
         #
         # @param [Hash] options
         # @option options [Hash[Symbol, Hash]] :queues A mapping between the
@@ -132,7 +142,7 @@ module Aws
         end
 
         # Return the queue_url for a given job_queue name
-        def queue_url_for(job_queue)
+        def url_for(job_queue)
           queue_attribute_for(:url, job_queue)
         end
 
@@ -188,14 +198,14 @@ module Aws
         # resolve ENV for global and queue specific options
         def env_options(options)
           resolved = {}
-          GLOBAL_CONFIGS.each do |cfg|
+          GLOBAL_ENV_CONFIGS.each do |cfg|
             env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
             resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
           end
           options[:queues]&.each_key do |queue|
             resolved[:queues] ||= {}
             resolved[:queues][queue] = options[:queues][queue].dup
-            QUEUE_CONFIGS.each do |cfg|
+            QUEUE_ENV_CONFIGS.each do |cfg|
               env_name = "AWS_ACTIVE_JOB_SQS_#{queue.upcase}_#{cfg.to_s.upcase}"
               resolved[:queues][queue][cfg] = parse_env_value(env_name) if ENV.key? env_name
             end

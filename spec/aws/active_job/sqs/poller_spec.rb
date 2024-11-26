@@ -82,7 +82,7 @@ module Aws
           it 'sets max_number_of_messages to 1 for fifo queues' do
             allow(poller).to receive(:boot_rails) # no-op the boot
 
-            allow(Aws::ActiveJob::SQS.config).to receive(:queue_url_for).and_return('https://queue-url.fifo')
+            allow(Aws::ActiveJob::SQS.config).to receive(:url_for).and_return('https://queue-url.fifo')
             expect(Aws::SQS::QueuePoller).to receive(:new).and_return(queue_poller)
 
             expect(queue_poller).to receive(:poll).with(
