@@ -63,15 +63,19 @@ You also need to configure a mapping of ActiveJob queue names to SQS Queue URLs:
 
 ```yaml
 # config/aws_sqs_active_job.yml
+backpressure: 5 # configure global options for poller
+max_messages: 3
 queues:
-  default: 'https://my-queue-url.amazon.aws'
+  default: 
+    url: 'https://my-queue-url.amazon.aws'
+    max_messages: 2 # queue specific values override global values
 ```
 
 For a complete list of configuration options see the
 [Aws::ActiveJob::SQS::Configuration](https://docs.aws.amazon.com/sdk-for-ruby/aws-activejob-sqs/api/Aws/ActiveJob/SQS/Configuration.html)
 documentation.
 
-You can configure SQS Active Job either through the yaml file or
+You can configure SQS Active Job either through the environment, yaml file or
 through code in your `config/<env>.rb` or initializers.
 
 For file based configuration, you can use either
@@ -86,6 +90,16 @@ Aws::ActiveJob::SQS.configure do |config|
   config.max_messages = 5
   config.client = Aws::SQS::Client.new(region: 'us-east-1')
 end
+```
+
+SQS Active Job loads global and queue specific values from your
+environment. Global keys take the form of:
+`AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
+form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`. Example:
+
+```shell
+export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
+export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
 ```
 
 ## Usage
