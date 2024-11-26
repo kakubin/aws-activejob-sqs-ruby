@@ -8,6 +8,8 @@ module Aws
         # Default configuration options
         # @api private
         DEFAULTS = {
+          threads: 2 * Concurrent.processor_count,
+          backpressure: 10,
           max_messages: 10,
           shutdown_timeout: 15,
           retry_standard_errors: true, # TODO: Remove in next MV
@@ -18,6 +20,7 @@ module Aws
         }.freeze
 
         GLOBAL_ENV_CONFIGS = %i[
+          threads backpressure
           max_messages shutdown_timeout
           visibility_timeout message_group_id
         ].freeze
@@ -28,8 +31,9 @@ module Aws
         ].freeze
 
         # @api private
-        attr_accessor :queues,
+        attr_accessor :queues, :threads, :backpressure,
                       :shutdown_timeout, :client, :logger,
+                      :max_messages, :visibility_timeout,
                       :async_queue_error_handler
 
         # Don't use this method directly: Configuration is a singleton class, use
@@ -125,7 +129,8 @@ module Aws
         # @api private
         attr_accessor :queues, :max_messages, :visibility_timeout,
                       :shutdown_timeout, :client, :logger,
-                      :async_queue_error_handler, :message_group_id
+                      :async_queue_error_handler, :message_group_id,
+                      :retry_standard_errors
 
         attr_reader :excluded_deduplication_keys
 
@@ -238,6 +243,11 @@ module Aws
         # Load options from YAML file
         def load_from_file(file_path)
           opts = load_yaml(file_path) || {}
+          opts[:queues]&.each_key do |queue|
+            if opts[:queues][queue].is_a?(String)
+              opts[:queues][queue] = { url: opts[:queues][queue] }
+            end
+          end
           opts.deep_symbolize_keys
         end
 

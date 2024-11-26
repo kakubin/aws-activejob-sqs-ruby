@@ -47,10 +47,10 @@ module Aws
             allow(poller).to receive(:poll) # no-op the poll
             poller.run
 
-            options = poller.instance_variable_get(:@options)
-            expect(options[:max_messages]).to eq 5 # from test app config file
-            expect(options[:visibility_timeout]).to eq 360 # from argv
-            expect(options[:shutdown_timeout]).to eq 15 # from defaults
+            config = Aws::ActiveJob::SQS.config
+            expect(config.max_messages).to eq 5 # from test app config file
+            expect(config.visibility_timeout).to eq 360 # from argv
+            expect(config.shutdown_timeout).to eq 15 # from defaults
           end
 
           it 'polls the configured queue' do
@@ -71,7 +71,7 @@ module Aws
             expect(queue_poller).to receive(:poll).with(
               {
                 skip_delete: true,
-                max_number_of_messages: 5,
+                max_number_of_messages: 2, # from queue config in app config file
                 visibility_timeout: 360
               }
             )

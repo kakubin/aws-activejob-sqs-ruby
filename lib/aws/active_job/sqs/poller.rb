@@ -12,14 +12,6 @@ module Aws
       class Poller
         class Interrupt < StandardError; end
 
-        DEFAULT_OPTS = {
-          threads: 2 * Concurrent.processor_count,
-          max_messages: 10,
-          shutdown_timeout: 15,
-          backpressure: 10,
-          retry_standard_errors: true
-        }.freeze
-
         def initialize(args = ARGV)
           @options = parse_args(args)
           # Set_environment must be run before we boot_rails
@@ -35,22 +27,28 @@ module Aws
           boot_rails
 
           # cannot load config (from file or initializers) until after
-          # rails has been booted.
-          @options = DEFAULT_OPTS
-                     .merge(Aws::ActiveJob::SQS.config.to_h)
-                     .merge(@options.to_h)
+          # rails has been booted.\
+          Aws::ActiveJob::SQS.configure do |cfg|
+            @options.each_pair do |key, value|
+              cfg.send(:"#{key}=", value) if cfg.respond_to?(:"#{key}=")
+            end
+          end
+
           validate_config
+
+          config = Aws::ActiveJob::SQS.config
+
           # ensure we have a logger configured
-          @logger = @options[:logger] || ActiveSupport::Logger.new($stdout)
-          @logger.info("Starting Poller with options=#{@options}")
+          @logger = config.logger || ActiveSupport::Logger.new($stdout)
+          @logger.info("Starting Poller with config=#{config.to_h}")
 
           Signal.trap('INT') { raise Interrupt }
           Signal.trap('TERM') { raise Interrupt }
           @executor = Executor.new(
-            max_threads: @options[:threads],
+            max_threads: config.threads,
             logger: @logger,
-            max_queue: @options[:backpressure],
-            retry_standard_errors: @options[:retry_standard_errors]
+            max_queue: config.backpressure,
+            retry_standard_errors: config.retry_standard_errors
           )
 
           poll
@@ -63,18 +61,19 @@ module Aws
         private
 
         def shutdown
-          @executor.shutdown(@options[:shutdown_timeout])
+          @executor.shutdown(Aws::ActiveJob::SQS.config.shutdown_timeout)
         end
 
         def poll
-          queue_url = Aws::ActiveJob::SQS.config.url_for(@options[:queue])
-          @logger.info "Polling on: #{@options[:queue]} => #{queue_url}"
-          client = Aws::ActiveJob::SQS.config.client
+          config = Aws::ActiveJob::SQS.config
+          queue = @options[:queue]
+          queue_url = config.url_for(queue)
+          client = config.client
           @poller = Aws::SQS::QueuePoller.new(queue_url, client: client)
           poller_options = {
             skip_delete: true,
-            max_number_of_messages: @options[:max_messages],
-            visibility_timeout: @options[:visibility_timeout]
+            max_number_of_messages: config.max_messages_for(queue),
+            visibility_timeout: config.visibility_timeout_for(queue)
           }
           # Limit max_number_of_messages for FIFO queues to 1
           # this ensures jobs with the same message_group_id are processed
@@ -84,6 +83,8 @@ module Aws
           poller_options[:max_number_of_messages] = 1 if Aws::ActiveJob::SQS.fifo?(queue_url)
 
           single_message = poller_options[:max_number_of_messages] == 1
+
+          @logger.info "Polling on: #{queue} => #{queue_url} with options=#{poller_options}"
 
           @poller.poll(poller_options) do |msgs|
             msgs = [msgs] if single_message
