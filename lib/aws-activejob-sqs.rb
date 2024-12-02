@@ -19,7 +19,7 @@ module Aws
         @config ||= Configuration.new
       end
 
-      # @yield Configuration
+      # @yield [Configuration] the (singleton) Configuration
       def self.configure
         yield(config)
       end

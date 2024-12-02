@@ -22,3 +22,6 @@ Naming/FileName:
 Style/BlockComments:
   Exclude:
     - 'spec/spec_helper.rb'
+
+Metrics/ClassLength:
+  Max: 150

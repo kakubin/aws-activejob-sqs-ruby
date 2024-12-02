@@ -22,7 +22,7 @@ module ActiveJob
         end
 
         def queue_url
-          @queue_url ||= Aws::ActiveJob::SQS.config.queue_url_for(@job.queue_name)
+          @queue_url ||= Aws::ActiveJob::SQS.config.url_for(@job.queue_name)
         end
 
         def entry
@@ -61,7 +61,7 @@ module ActiveJob
             Digest::SHA256.hexdigest(ActiveSupport::JSON.dump(deduplication_body))
 
           message_group_id = @job.message_group_id if @job.respond_to?(:message_group_id)
-          message_group_id ||= Aws::ActiveJob::SQS.config.message_group_id
+          message_group_id ||= Aws::ActiveJob::SQS.config.message_group_id_for(@job.queue_name)
 
           options[:message_group_id] = message_group_id
           options
@@ -69,7 +69,7 @@ module ActiveJob
 
         def deduplication_body
           ex_dedup_keys = @job.excluded_deduplication_keys if @job.respond_to?(:excluded_deduplication_keys)
-          ex_dedup_keys ||= Aws::ActiveJob::SQS.config.excluded_deduplication_keys
+          ex_dedup_keys ||= Aws::ActiveJob::SQS.config.excluded_deduplication_keys_for(@job.queue_name)
 
           @body.except(*ex_dedup_keys)
         end

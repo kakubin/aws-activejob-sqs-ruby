@@ -1,6 +1,9 @@
 Unreleased Changes
 ------------------
 
+* Feature - Support per queue configuration.
+* Feature - Support loading global and queue specific configuration from ENV.
+
 0.1.1 (2024-12-02)
 ------------------
 

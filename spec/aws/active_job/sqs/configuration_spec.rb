@@ -7,7 +7,7 @@ module Aws
         let(:expected_file_opts) do
           {
             max_messages: 5,
-            queues: { default: 'https://queue-url' }
+            queues: { default: { url: 'https://queue-url', max_messages: 2 } }
           }
         end
 
@@ -41,11 +41,89 @@ module Aws
         it 'accepts YAML config with alias' do
           allow_any_instance_of(ERB).to receive(:result).and_return(<<~YAML)
             common: &common
-              default: 'https://queue-url'
+              default:
+                url: 'https://queue-url'
             queues:
               <<: *common
           YAML
           expect { Aws::ActiveJob::SQS::Configuration.new }.to_not raise_error
+        end
+
+        context 'ENV set' do
+          Configuration::GLOBAL_ENV_CONFIGS.each do |config_name|
+            next if config_name == :config_file
+
+            describe "ENV #{config_name}" do
+              let(:env_name) { "AWS_ACTIVE_JOB_SQS_#{config_name.to_s.upcase}" }
+
+              let(:cfg) do
+                options = {}
+                options[config_name] = 'file_value'
+                Tempfile.create('aws_active_job_sqs.yml') do |f|
+                  f << options.transform_keys(&:to_s).to_yaml
+                  f.rewind
+                  Configuration.new(
+                    config_file: f.path,
+                    queues: { default: {} }
+                  )
+                end
+              end
+
+              before(:each) do
+                ENV[env_name] = 'env_value'
+              end
+
+              after(:each) do
+                ENV.delete(env_name)
+              end
+
+              it 'uses values from ENV over default and file' do
+                if Configuration::QUEUE_CONFIGS.include?(config_name)
+                  expect(cfg.send(:"#{config_name}_for", :default)).to eq('env_value')
+                else
+                  expect(cfg.send(config_name)).to eq('env_value')
+                end
+              end
+            end
+          end
+
+          Configuration::QUEUE_ENV_CONFIGS.each do |config_name|
+            describe "ENV queue #{config_name}" do
+              let(:env_name) { "AWS_ACTIVE_JOB_SQS_DEFAULT_#{config_name.to_s.upcase}" }
+
+              let(:cfg) do
+                options = { queues: { default: {} } }
+                options[:queues][:default][config_name] = 'file_value'
+                Tempfile.create('aws_active_job_sqs.yml') do |f|
+                  f << options.deep_transform_keys(&:to_s).to_yaml
+                  f.rewind
+                  Configuration.new(
+                    config_file: f.path,
+                    queues: { default: {} }
+                  )
+                end
+              end
+
+              before(:each) do
+                ENV[env_name] = 'env_value'
+              end
+
+              after(:each) do
+                ENV.delete(env_name)
+              end
+
+              it 'uses values from ENV over default and file' do
+                expect(cfg.send(:"#{config_name}_for", :default)).to eq('env_value')
+              end
+
+              it 'uses runtime configured values over ENV' do
+                options = { queues: { default: {} } }
+                options[:queues][:default][config_name] = 'runtime_value'
+                cfg = Configuration.new(options)
+                expect(cfg.send(:"#{config_name}_for", :default)).to eq('runtime_value')
+              end
+            end
+          end
         end
 
         describe '#client' do
@@ -62,21 +140,30 @@ module Aws
           end
         end
 
-        describe '#queue_url_for' do
-          let(:queue_url) { 'https://queue_url' }
+        Configuration::QUEUE_CONFIGS.each do |config_name|
+          describe "##{config_name}_for" do
+            let(:cfg) do
+              queues = {
+                default: {},
+                override: {}
+              }
+              queues[:override][config_name] = 'queue_value'
+              options = { queues: queues, config_file: 'nonexistant' }
+              options[config_name] = 'global_value'
+              Aws::ActiveJob::SQS::Configuration.new(**options)
+            end
 
-          let(:cfg) do
-            Aws::ActiveJob::SQS::Configuration.new(
-              queues: { default: queue_url }
-            )
-          end
+            it 'returns the queue value when set' do
+              expect(cfg.send(:"#{config_name}_for", :override)).to eq('queue_value')
+            end
 
-          it 'returns the queue url' do
-            expect(cfg.queue_url_for(:default)).to eq queue_url
-          end
+            it 'returns the global value when unset' do
+              expect(cfg.send(:"#{config_name}_for", :default)).to eq('global_value')
+            end
 
-          it 'raises an ArgumentError when the queue is not mapped' do
-            expect { cfg.queue_url_for(:not_mapped) }.to raise_error(ArgumentError)
+            it 'raises an ArgumentError when the queue is not mapped' do
+              expect { cfg.send(:"#{config_name}_for", :not_mapped) }.to raise_error(ArgumentError)
+            end
           end
         end
       end
