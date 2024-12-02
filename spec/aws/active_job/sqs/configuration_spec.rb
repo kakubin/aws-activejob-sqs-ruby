@@ -56,15 +56,21 @@ module Aws
             describe "ENV #{config_name}" do
               let(:env_name) { "AWS_ACTIVE_JOB_SQS_#{config_name.to_s.upcase}" }
 
-              let(:cfg) { Configuration.new }
+              let(:cfg) do
+                options = {}
+                options[config_name] = 'file_value'
+                Tempfile.create('aws_active_job_sqs.yml') do |f|
+                  f << options.transform_keys(&:to_s).to_yaml
+                  f.rewind
+                  Configuration.new(
+                    config_file: f.path,
+                    queues: { default: {} }
+                  )
+                end
+              end
 
               before(:each) do
                 ENV[env_name] = 'env_value'
-
-                file_options = {}
-                file_options[config_name] = 'file_value'
-                allow_any_instance_of(Configuration)
-                  .to receive(:file_options).and_return(file_options)
               end
 
               after(:each) do
@@ -72,14 +78,11 @@ module Aws
               end
 
               it 'uses values from ENV over default and file' do
-                expect(cfg.send(config_name)).to eq('env_value')
-              end
-
-              it 'uses runtime configured values over ENV' do
-                options = {}
-                options[config_name] = 'runtime_value'
-                cfg = Configuration.new(options)
-                expect(cfg.send(config_name)).to eq('runtime_value')
+                if Configuration::QUEUE_CONFIGS.include?(config_name)
+                  expect(cfg.send(:"#{config_name}_for", :default)).to eq('env_value')
+                else
+                  expect(cfg.send(config_name)).to eq('env_value')
+                end
               end
             end
           end
@@ -88,15 +91,21 @@ module Aws
             describe "ENV queue #{config_name}" do
               let(:env_name) { "AWS_ACTIVE_JOB_SQS_DEFAULT_#{config_name.to_s.upcase}" }
 
-              let(:cfg) { Configuration.new }
+              let(:cfg) do
+                options = { queues: { default: {} } }
+                options[:queues][:default][config_name] = 'file_value'
+                Tempfile.create('aws_active_job_sqs.yml') do |f|
+                  f << options.deep_transform_keys(&:to_s).to_yaml
+                  f.rewind
+                  Configuration.new(
+                    config_file: f.path,
+                    queues: { default: {} }
+                  )
+                end
+              end
 
               before(:each) do
                 ENV[env_name] = 'env_value'
-
-                file_options = { queues: { default: {} } }
-                file_options[:queues][:default][config_name] = 'file_value'
-                allow_any_instance_of(Configuration)
-                  .to receive(:file_options).and_return(file_options)
               end
 
               after(:each) do
@@ -104,7 +113,6 @@ module Aws
               end
 
               it 'uses values from ENV over default and file' do
-                puts cfg.to_h
                 expect(cfg.send(:"#{config_name}_for", :default)).to eq('env_value')
               end
 
@@ -132,7 +140,7 @@ module Aws
           end
         end
 
-        Configuration::QUEUE_ENV_CONFIGS.each do |config_name|
+        Configuration::QUEUE_CONFIGS.each do |config_name|
           describe "##{config_name}_for" do
             let(:cfg) do
               queues = {

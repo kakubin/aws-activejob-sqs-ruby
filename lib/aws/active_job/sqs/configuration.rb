@@ -3,7 +3,51 @@
 module Aws
   module ActiveJob
     module SQS
-      # Use +Aws::ActiveJob::SQS.config+ to access the singleton config instance.
+      # This class provides a Configuration object for AWS ActiveJob
+      # by pulling configuration options from runtime code, the ENV, a YAML file,
+      # and default settings, in that order. Values set on queues are used
+      # preferentially to global values.
+      #
+      # Use {Aws::ActiveJob::SQS.config Aws::ActiveJob::SQS.config}
+      #  to access the singleton config instance and use
+      # {Aws::ActiveJob::SQS.configure Aws::ActiveJob::SQS.configure} to
+      # configure in code:
+      #
+      #     Aws::ActiveJob::SQS.configure do |config|
+      #       config.logger = Rails.logger
+      #       config.max_messages = 5
+      #     end
+      #
+      # # Configuation YAML File
+      # By default, this class will load configuration from the
+      # `config/aws_active_job_sqs/<RAILS_ENV}.yml` or
+      # `config/aws_active_job_sqs.yml` files.  You may specify the file used
+      # through the `:config_file` option in code or the
+      # `AWS_ACTIVE_JOB_SQS_CONFIG_FILE` environment variable.
+      #
+      # # Global and queue specific options
+      # Values configured for specific queues are used preferentially to
+      # global values. See: {QUEUE_CONFIGS} for supported queue specific
+      # options.
+      #
+      # # Environment Variables
+      # The Configuration loads global and queue specific values from your
+      # environment. Global keys take the form of:
+      # `AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
+      # form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`.
+      # <QUEUE_NAME> is case-insensitive and is always down cased. Configuring
+      # non-snake case queues (containing upper case) through ENV is
+      # not supported.
+      #
+      # Example:
+      #
+      #     export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
+      #     export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
+      #
+      # For supported global ENV configurations see
+      # {GLOBAL_ENV_CONFIGS}.  For supported queue specific ENV configurations
+      # see: {QUEUE_ENV_CONFIGS}.
+      #
       class Configuration
         # Default configuration options
         # @api private
@@ -20,44 +64,32 @@ module Aws
         }.freeze
 
         GLOBAL_ENV_CONFIGS = %i[
-          config_file threads backpressure
-          max_messages shutdown_timeout
-          visibility_timeout message_group_id
+          config_file
+          threads
+          backpressure
+          max_messages
+          shutdown_timeout
+          visibility_timeout
+          message_group_id
         ].freeze
 
         QUEUE_ENV_CONFIGS = %i[
-          url max_messages
-          visibility_timeout message_group_id
+          url
+          max_messages
+          visibility_timeout
+          message_group_id
         ].freeze
 
+        QUEUE_CONFIGS = QUEUE_ENV_CONFIGS + %i[excluded_deduplication_keys]
+
         # Don't use this method directly: Configuration is a singleton class, use
-        # +Aws::ActiveJob::SQS.config+ to access the singleton config.
-        #
-        # This class provides a Configuration object for AWS ActiveJob
-        # by pulling configuration options from Runtime, the ENV, a YAML file,
-        # and default settings, in that order. Values set on queues are used
-        # preferentially to global values.
-        #
-        # # Environment Variables
-        # The Configuration loads global and queue specific values from your
-        # environment. Global keys take the form of:
-        # `AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
-        # form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`.
-        # <QUEUE_NAME> is case-insensitive and is always down cased. Configuring
-        # non-snake case queues (containing upper case) through ENV is
-        # not supported.
-        # Example:
-        #
-        #     export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
-        #     export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
+        # {}Aws::ActiveJob::SQS.config} to access the singleton config.
         #
         # @param [Hash] options
-        # @option options [Hash[Symbol, Hash]] :queues A mapping between the
-        #   active job queue name and the queue properties. Valid properties
-        #   are: url [Required], max_messages, shutdown_timeout,
-        #   message_group_id, and :excluded_deduplication_keys. Values
+        # @option options [Hash<Symbol, Hash>] :queues A mapping between the
+        #   active job queue name and the queue properties. Values
         #   configured on the queue are used preferentially to the global
-        #   values.
+        #   values. See: {QUEUE_CONFIGS} for supported queue specific options.
         #   Note: multiple active job queues can map to the same SQS Queue URL.
         #
         # @option options  [Integer] :max_messages
@@ -93,7 +125,7 @@ module Aws
         #
         # @option options [String] :config_file
         #   Override file to load configuration from. If not specified will
-        #   attempt to load from config/aws_sqs_active_job.yml.
+        #   attempt to load from config/aws_active_job_sqs.yml.
         #
         # @option options [String] :message_group_id (SqsActiveJobGroup)
         #  The message_group_id to use for queueing messages on a fifo queues.
@@ -123,12 +155,12 @@ module Aws
 
         # @api private
         attr_accessor :queues, :threads, :backpressure,
-                      :max_messages, :visibility_timeout,
                       :shutdown_timeout, :client, :logger,
-                      :async_queue_error_handler, :message_group_id,
+                      :async_queue_error_handler,
                       :retry_standard_errors
 
-        attr_reader :excluded_deduplication_keys
+        # @api private
+        attr_writer :max_messages, :message_group_id, :visibility_timeout
 
         def excluded_deduplication_keys=(keys)
           @excluded_deduplication_keys = keys.map(&:to_s) | ['job_id']
@@ -142,25 +174,10 @@ module Aws
           end
         end
 
-        # Return the queue_url for a given job_queue name
-        def url_for(job_queue)
-          queue_attribute_for(:url, job_queue)
-        end
-
-        def max_messages_for(job_queue)
-          queue_attribute_for(:max_messages, job_queue)
-        end
-
-        def visibility_timeout_for(job_queue)
-          queue_attribute_for(:visibility_timeout, job_queue)
-        end
-
-        def message_group_id_for(job_queue)
-          queue_attribute_for(:message_group_id, job_queue)
-        end
-
-        def excluded_deduplication_keys_for(job_queue)
-          queue_attribute_for(:excluded_deduplication_keys, job_queue)
+        QUEUE_CONFIGS.each do |key|
+          define_method(:"#{key}_for") do |job_queue|
+            queue_attribute_for(key, job_queue)
+          end
         end
 
         # @api private
@@ -206,7 +223,7 @@ module Aws
 
           # check for queue specific values
           queue_key_regex =
-            /AWS_ACTIVE_JOB_SQS_([a-zA-Z0-9_-]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/
+            /AWS_ACTIVE_JOB_SQS_([\w]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/
           ENV.each_key do |key|
             next unless (match = queue_key_regex.match(key))
 
@@ -235,17 +252,14 @@ module Aws
         end
 
         def default_config_file
-          file = ::Rails.root.join("config/aws_sqs_active_job/#{::Rails.env}.yml")
-          file = ::Rails.root.join('config/aws_sqs_active_job.yml') unless File.exist?(file)
+          file = ::Rails.root.join("config/aws_active_job_sqs/#{::Rails.env}.yml")
+          file = ::Rails.root.join('config/aws_active_job_sqs.yml') unless File.exist?(file)
           file
         end
 
         # Load options from YAML file
         def load_from_file(file_path)
           opts = load_yaml(file_path) || {}
-          opts[:queues]&.each_key do |queue|
-            opts[:queues][queue] = { url: opts[:queues][queue] } if opts[:queues][queue].is_a?(String)
-          end
           opts.deep_symbolize_keys
         end
 

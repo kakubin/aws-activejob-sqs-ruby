@@ -62,7 +62,7 @@ end
 You also need to configure a mapping of ActiveJob queue names to SQS Queue URLs:
 
 ```yaml
-# config/aws_sqs_active_job.yml
+# config/aws_active_job_sqs.yml
 backpressure: 5 # configure global options for poller
 max_messages: 3
 queues:
@@ -79,7 +79,9 @@ You can configure SQS Active Job either through the environment, yaml file or
 through code in your `config/<env>.rb` or initializers.
 
 For file based configuration, you can use either
-`config/aws_sqs_active_job/<Rails.env>.yml` or `config/aws_sqs_active_job.yml`.
+`config/aws_active_job_sqs/<Rails.env>.yml` or `config/aws_active_job_sqs.yml`.
+You may specify the file used  through the `:config_file` option in code or the
+`AWS_ACTIVE_JOB_SQS_CONFIG_FILE` environment variable.
 The yaml files support ERB.
 
 To configure in code:
