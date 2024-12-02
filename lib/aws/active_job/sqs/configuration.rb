@@ -114,7 +114,6 @@ module Aws
         #   Using this option, job_id is implicitly added to the keys.
 
         def initialize(options = {})
-          opts = options
           opts = env_options.deep_merge(options)
           opts = file_options(opts).deep_merge(opts)
           opts = DEFAULTS.merge(opts)
@@ -199,7 +198,7 @@ module Aws
 
         # resolve ENV for global and queue specific options
         def env_options
-          resolved = {queues: {}}
+          resolved = { queues: {} }
           GLOBAL_ENV_CONFIGS.each do |cfg|
             env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
             resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
@@ -208,13 +207,13 @@ module Aws
           # check for queue specific values
           queue_key_regex =
             /AWS_ACTIVE_JOB_SQS_([a-zA-Z0-9_-]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/
-          ENV.keys.each do |key|
-            if (match = queue_key_regex.match(key))
-              queue_name = match[1].downcase.to_sym
-              resolved[:queues][queue_name] ||= {}
-              resolved[:queues][queue_name][match[2].downcase.to_sym] =
-                parse_env_value(key)
-            end
+          ENV.each_key do |key|
+            next unless (match = queue_key_regex.match(key))
+
+            queue_name = match[1].downcase.to_sym
+            resolved[:queues][queue_name] ||= {}
+            resolved[:queues][queue_name][match[2].downcase.to_sym] =
+              parse_env_value(key)
           end
           resolved
         end
@@ -245,9 +244,7 @@ module Aws
         def load_from_file(file_path)
           opts = load_yaml(file_path) || {}
           opts[:queues]&.each_key do |queue|
-            if opts[:queues][queue].is_a?(String)
-              opts[:queues][queue] = { url: opts[:queues][queue] }
-            end
+            opts[:queues][queue] = { url: opts[:queues][queue] } if opts[:queues][queue].is_a?(String)
           end
           opts.deep_symbolize_keys
         end
