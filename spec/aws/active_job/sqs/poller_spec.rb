@@ -48,8 +48,8 @@ module Aws
             poller.run
 
             config = Aws::ActiveJob::SQS.config
-            expect(config.max_messages).to eq 5 # from test app config file
-            expect(config.visibility_timeout).to eq 360 # from argv
+            expect(config.max_messages_for(:default)).to eq 2 # from test app config file
+            expect(config.visibility_timeout_for(:default)).to eq 360 # from argv
             expect(config.shutdown_timeout).to eq 15 # from defaults
           end
 

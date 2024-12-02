@@ -33,7 +33,7 @@ module ActiveJob
                 queue_url: 'https://queue-url.fifo',
                 message_body: instance_of(String),
                 message_attributes: instance_of(Hash),
-                message_group_id: Aws::ActiveJob::SQS.config.message_group_id,
+                message_group_id: Aws::ActiveJob::SQS.config.message_group_id_for(:default),
                 message_deduplication_id: instance_of(String)
               }
             )
@@ -62,7 +62,7 @@ module ActiveJob
                   queue_url: 'https://queue-url.fifo',
                   message_body: instance_of(String),
                   message_attributes: instance_of(Hash),
-                  message_group_id: Aws::ActiveJob::SQS.config.message_group_id,
+                  message_group_id: Aws::ActiveJob::SQS.config.message_group_id_for(:default),
                   message_deduplication_id: hashed_body
                 }
               )
@@ -90,7 +90,7 @@ module ActiveJob
                   queue_url: 'https://queue-url.fifo',
                   message_body: instance_of(String),
                   message_attributes: instance_of(Hash),
-                  message_group_id: Aws::ActiveJob::SQS.config.message_group_id,
+                  message_group_id: Aws::ActiveJob::SQS.config.message_group_id_for(:default),
                   message_deduplication_id: hashed_body
                 }
               )
@@ -108,7 +108,7 @@ module ActiveJob
                 queue_url: 'https://queue-url.fifo',
                 message_body: instance_of(String),
                 message_attributes: instance_of(Hash),
-                message_group_id: Aws::ActiveJob::SQS.config.message_group_id,
+                message_group_id: Aws::ActiveJob::SQS.config.message_group_id_for(:default),
                 message_deduplication_id: instance_of(String)
               }
             )
