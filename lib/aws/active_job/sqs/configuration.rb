@@ -20,7 +20,7 @@ module Aws
         }.freeze
 
         GLOBAL_ENV_CONFIGS = %i[
-          threads backpressure
+          config_file threads backpressure
           max_messages shutdown_timeout
           visibility_timeout message_group_id
         ].freeze
@@ -42,7 +42,11 @@ module Aws
         # The Configuration loads global and queue specific values from your
         # environment. Global keys take the form of:
         # `AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
-        # form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`. Example:
+        # form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`.
+        # <QUEUE_NAME> is case-insensitive and is always down cased. Configuring
+        # non-snake case queues (containing upper case) through ENV is
+        # not supported.
+        # Example:
         #
         #     export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
         #     export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
@@ -110,14 +114,12 @@ module Aws
         #   Using this option, job_id is implicitly added to the keys.
 
         def initialize(options = {})
-          options[:config_file] ||= config_file if File.exist?(config_file)
-          resolved = DEFAULTS
-                    .merge(file_options(options))
+          opts = options
+          opts = env_options.deep_merge(options)
+          opts = file_options(opts).deep_merge(opts)
+          opts = DEFAULTS.merge(opts)
 
-          resolved = resolved
-                    .merge(env_options(resolved))
-                    .merge(options)
-          set_attributes(resolved)
+          set_attributes(opts)
         end
 
         # @api private
@@ -196,18 +198,22 @@ module Aws
         end
 
         # resolve ENV for global and queue specific options
-        def env_options(options)
-          resolved = {}
+        def env_options
+          resolved = {queues: {}}
           GLOBAL_ENV_CONFIGS.each do |cfg|
             env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
             resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
           end
-          options[:queues]&.each_key do |queue|
-            resolved[:queues] ||= {}
-            resolved[:queues][queue] = options[:queues][queue].dup
-            QUEUE_ENV_CONFIGS.each do |cfg|
-              env_name = "AWS_ACTIVE_JOB_SQS_#{queue.upcase}_#{cfg.to_s.upcase}"
-              resolved[:queues][queue][cfg] = parse_env_value(env_name) if ENV.key? env_name
+
+          # check for queue specific values
+          queue_key_regex =
+            /AWS_ACTIVE_JOB_SQS_([a-zA-Z0-9_-]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/
+          ENV.keys.each do |key|
+            if (match = queue_key_regex.match(key))
+              queue_name = match[1].downcase.to_sym
+              resolved[:queues][queue_name] ||= {}
+              resolved[:queues][queue_name][match[2].downcase.to_sym] =
+                parse_env_value(key)
             end
           end
           resolved
@@ -221,7 +227,7 @@ module Aws
         end
 
         def file_options(options = {})
-          file_path = config_file_path(options)
+          file_path = options[:config_file] || default_config_file
           if file_path
             load_from_file(file_path)
           else
@@ -229,7 +235,7 @@ module Aws
           end
         end
 
-        def config_file
+        def default_config_file
           file = ::Rails.root.join("config/aws_sqs_active_job/#{::Rails.env}.yml")
           file = ::Rails.root.join('config/aws_sqs_active_job.yml') unless File.exist?(file)
           file
@@ -246,12 +252,9 @@ module Aws
           opts.deep_symbolize_keys
         end
 
-        # @return [String] Configuration path found in environment or YAML file.
-        def config_file_path(options)
-          options[:config_file] || ENV.fetch('AWS_ACTIVE_JOB_SQS_CONFIG_FILE', nil)
-        end
-
         def load_yaml(file_path)
+          return {} unless File.exist?(file_path)
+
           require 'erb'
           source = ERB.new(File.read(file_path)).result
 
