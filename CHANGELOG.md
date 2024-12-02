@@ -1,4 +1,4 @@
-Unreleased Changes
+0.1.1 (2024-12-02)
 ------------------
 
 * Feature - Add lifecycle hooks for Executor.
