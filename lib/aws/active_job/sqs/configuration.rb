@@ -9,7 +9,7 @@ module Aws
       # preferentially to global values.
       #
       # Use {Aws::ActiveJob::SQS.config Aws::ActiveJob::SQS.config}
-      #  to access the singleton config instance and use
+      # to access the singleton config instance and use
       # {Aws::ActiveJob::SQS.configure Aws::ActiveJob::SQS.configure} to
       # configure in code:
       #
@@ -82,8 +82,11 @@ module Aws
 
         QUEUE_CONFIGS = QUEUE_ENV_CONFIGS + %i[excluded_deduplication_keys]
 
-        # Don't use this method directly: Configuration is a singleton class, use
-        # {}Aws::ActiveJob::SQS.config} to access the singleton config.
+        # Don't use this method directly: Configuration is a singleton class,
+        # use {Aws::ActiveJob::SQS.config Aws::ActiveJob::SQS.config}
+        # to access the singleton config instance and use
+        # {Aws::ActiveJob::SQS.configure Aws::ActiveJob::SQS.configure} to
+        # configure in code:
         #
         # @param [Hash] options
         # @option options [Hash<Symbol, Hash>] :queues A mapping between the

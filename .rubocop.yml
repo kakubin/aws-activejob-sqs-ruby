@@ -24,5 +24,4 @@ Style/BlockComments:
     - 'spec/spec_helper.rb'
 
 Metrics/ClassLength:
-  Exclude:
-    - 'lib/aws/active_job/sqs/configuration.rb'
+  Max: 150
