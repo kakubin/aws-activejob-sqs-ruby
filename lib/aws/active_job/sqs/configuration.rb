@@ -169,7 +169,7 @@ module Aws
         end
 
         def poller_error_handler(&block)
-          @poller_error_handler = block if block
+          @poller_error_handler = block if block_given?
           @poller_error_handler
         end
 

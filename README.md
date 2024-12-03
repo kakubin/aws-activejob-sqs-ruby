@@ -165,8 +165,8 @@ end
 Configuring different behavior for different exceptions:
 
 ```ruby
-Aws::ActiveJob::SQS.configure do |config|
-  config.poller_error_handler do |exception, sqs_message|
+module MyErrorHandlers
+  HANDLE_ERRORS = proc do |exception, sqs_message|
     case exception
     when MyRetryableException
       # no-op, don't delete message
@@ -178,6 +178,10 @@ Aws::ActiveJob::SQS.configure do |config|
       raise exception
     end
   end
+end
+
+Aws::ActiveJob::SQS.configure do |config|
+  config.poller_error_handler = MyErrorHandlers::HANDLE_ERRORS
 end
 ```
 
