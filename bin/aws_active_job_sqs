@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative '../lib/aws-activejob-sqs'
+require_relative '../lib/aws/active_job/sqs/cli'
+require_relative '../lib/aws/active_job/sqs/poller'
+
+opts = Aws::ActiveJob::SQS::CLI.parse_args(ARGV)
+
+Aws::ActiveJob::SQS::CLI.boot_rails(opts) if opts[:boot_rails]
+
+require File.join(Dir.pwd, opts[:require]) if opts[:require]
+
+Aws::ActiveJob::SQS::Poller.new(opts).run

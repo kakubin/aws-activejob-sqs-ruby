@@ -25,3 +25,4 @@ Style/BlockComments:
 
 Metrics/ClassLength:
   Max: 150
+

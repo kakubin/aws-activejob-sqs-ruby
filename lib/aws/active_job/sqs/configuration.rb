@@ -57,8 +57,8 @@ module Aws
           max_messages: 10,
           shutdown_timeout: 15,
           queues: {},
-          logger: ::Rails.logger,
-          message_group_id: 'SqsActiveJobGroup',
+          logger: defined?(::Rails) ? ::Rails.logger : ActiveSupport::Logger.new($stdout),
+          message_group_id: 'ActiveJobSqsGroup',
           excluded_deduplication_keys: ['job_id']
         }.freeze
 
@@ -259,6 +259,8 @@ module Aws
         end
 
         def default_config_file
+          return unless defined?(::Rails)
+
           file = ::Rails.root.join("config/aws_active_job_sqs/#{::Rails.env}.yml")
           file = ::Rails.root.join('config/aws_active_job_sqs.yml') unless File.exist?(file)
           file
