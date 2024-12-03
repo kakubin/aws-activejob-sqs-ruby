@@ -31,9 +31,15 @@ module Aws
 
         def initialize(options = {})
           @executor = Concurrent::ThreadPoolExecutor.new(DEFAULTS.merge(options))
-          @retry_standard_errors = options[:retry_standard_errors]
           @logger = options[:logger] || ActiveSupport::Logger.new($stdout)
           @task_complete = Concurrent::Event.new
+
+          @error_handler = options[:error_handler]
+          @error_queue = Thread::Queue.new
+          @error_handler_thread = Thread.new(&method(:handle_errors))
+          @error_handler_thread.abort_on_exception = true
+          @error_handler_thread.report_on_exception = false
+          @shutting_down = Concurrent::AtomicBoolean.new(false)
         end
 
         def execute(message)
@@ -46,6 +52,8 @@ module Aws
         end
 
         def shutdown(timeout = nil)
+          @shutting_down.make_true
+
           run_hooks_for(:stop)
           @executor.shutdown
           clean_shutdown = @executor.wait_for_termination(timeout)
@@ -57,6 +65,9 @@ module Aws
                          'the queue and can be ru-run once their visibility timeout ' \
                          'passes.'
           end
+          @error_queue.push(nil) # process any remaining errors and then terminate
+          @error_handler_thread.join unless @error_handler_thread == Thread.current
+          @shutting_down.make_false
         end
 
         private
@@ -74,14 +85,7 @@ module Aws
             @logger.info "Error processing job #{job_msg}: #{e}"
             @logger.debug e.backtrace.join("\n")
 
-            if @retry_standard_errors && !job.exception_executions?
-              @logger.info(
-                'retry_standard_errors is enabled and job has not ' \
-                "been retried by Rails.  Leaving #{job_msg} in the queue."
-              )
-            else
-              message.delete
-            end
+            @error_queue.push([e, message])
           ensure
             @task_complete.set
           end
@@ -91,6 +95,24 @@ module Aws
           return unless (hooks = self.class.lifecycle_hooks[event_name])
 
           hooks.each(&:call)
+        end
+
+        # run in the @error_handler_thread
+        def handle_errors
+          # wait until errors are placed in the error queue
+          while ( (exception, message) = @error_queue.pop)
+            if @error_handler
+              @error_handler.call(exception, message)
+            else
+              raise exception
+            end
+          end
+        rescue StandardError => e
+          @logger.info("Unhandled exception executing jobs in poller: #{e}.")
+          @logger.info('Shutting down executor')
+          shutdown unless @shutting_down.true?
+
+          raise e # re-raise the error, terminating the application
         end
       end
     end
