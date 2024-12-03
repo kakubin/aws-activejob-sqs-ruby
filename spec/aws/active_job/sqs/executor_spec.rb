@@ -31,21 +31,26 @@ module Aws
             executor.shutdown # give the job a chance to run
           end
 
-          it 'deletes the message on exception' do
+          it 'raises the error and terminates poller' do
             expect(JobRunner).to receive(:new).and_return(runner)
             expect(runner).to receive(:run).and_raise StandardError
-            expect(msg).to receive(:delete)
-            executor.execute(msg)
-            executor.shutdown # give the job a chance to run
+            expect do
+              executor.execute(msg)
+              executor.shutdown # give the job a chance to run
+            end.to raise_exception(StandardError)
           end
 
-          describe 'retry_standard_errors' do
-            let(:executor) { Executor.new(retry_standard_errors: true) }
+          describe 'error_handler' do
+            let(:error_handler) { double }
+            let(:executor) { Executor.new(error_handler: error_handler) }
+            let(:exception) { StandardError.new }
 
-            it 'does not delete the message on exception' do
+            it 'calls the error handler with exception and message' do
               expect(JobRunner).to receive(:new).and_return(runner)
-              expect(runner).to receive(:run).and_raise StandardError
-              expect(msg).not_to receive(:delete)
+              expect(runner).to receive(:run).and_raise exception
+              expect(error_handler).to receive(:call).with(exception, msg)
+              expect(executor).to receive(:shutdown).exactly(1).times.and_call_original
+
               executor.execute(msg)
               executor.shutdown # give the job a chance to run
             end
@@ -83,7 +88,28 @@ module Aws
             executor.shutdown(5)
           end
 
-          describe 'when lifecycle hooks are registered' do
+          context 'errors during shutdown' do
+            let(:error_handler) { double }
+            let(:body) { ActiveSupport::JSON.dump(TestJob.new('a1', 'a2').serialize) }
+            let(:msg) { double(data: double(body: body)) }
+            let(:executor) { Executor.new(error_handler: error_handler) }
+            let(:runner) { double('runner', id: 'jobid', class_name: 'jobclass', exception_executions?: false) }
+
+            it 'handles errors from jobs during shutdown' do
+              expect(JobRunner).to receive(:new).and_return(runner)
+              expect(runner).to receive(:run) do
+                sleep(0.1)
+                raise StandardError
+              end
+              expect(error_handler).to receive(:call)
+              expect(executor).to receive(:shutdown).exactly(1).times.and_call_original
+
+              executor.execute(msg)
+              executor.shutdown
+            end
+          end
+
+          context 'lifecycle hooks are registered' do
             let(:hook) { double }
 
             before do
@@ -94,7 +120,7 @@ module Aws
               Executor.clear_hooks
             end
 
-            it 'executs hook when shutdown' do
+            it 'executes hook when shutdown' do
               Aws::ActiveJob::SQS.on_worker_stop do
                 hook.call
               end

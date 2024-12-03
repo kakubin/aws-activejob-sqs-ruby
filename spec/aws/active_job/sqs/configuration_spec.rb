@@ -140,6 +140,16 @@ module Aws
           end
         end
 
+        describe '#poller_error_handler' do
+          it 'allows configuration through a block' do
+            cfg = Aws::ActiveJob::SQS::Configuration.new
+            cfg.poller_error_handler do
+              #  pass
+            end
+            expect(cfg.poller_error_handler).to be_a(Proc)
+          end
+        end
+
         Configuration::QUEUE_CONFIGS.each do |config_name|
           describe "##{config_name}_for" do
             let(:cfg) do

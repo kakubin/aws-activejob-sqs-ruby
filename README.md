@@ -136,19 +136,55 @@ When configured, ActiveJob will catch the exception and reschedule the job for
 re-execution after the configured delay. This will delete the original
 message from the SQS queue and requeue a new message.
 
-By default SQS ActiveJob is configured with `retry_standard_error` set to `true`
-and will not delete messages for jobs that raise a `StandardError` and that do
-not handle that error via `retry_on` or `discard_on`. These job messages will
-remain on the queue and will be re-read and retried following the SQS Queue's
-configured
-[retry and DLQ settings](https://docs.aws.amazon.com/lambda/latest/operatorguide/sqs-retries.html).
+You can configure an error handler block for the ActiveJob SQS poller with 
+`poller_error_handler`. Jobs that raise a `StandardError` and that do
+not handle that error via `retry_on` or `discard_on` will be call the configured
+`poller_error_handler` with `|exception, sqs_message|`.
+You may re-raise the exception to terminate the poller. You may also choose 
+whether to delete the sqs_message or not.  If the message is not explicitly 
+deleted then the message will be left on the queue and will be retried
+following the SQS Queue's configured
+[retry and DLQ settings](https://docs.aws.amazon.com/lambda/latest/operatorguide/sqs-retries.html). 
+Retries provided by this mechanism are after any retries configured on the job
+with `retry_on`.
+
 If you do not have a DLQ configured, the message will continue to be attempted
 until it reaches the queues retention period.  In general, it is a best practice
 to configure a DLQ to store unprocessable jobs for troubleshooting and re-drive.
 
-If you want failed jobs that do not have `retry_on` or `discard_on` configured
-to be immediately discarded and not left on the queue, set `retry_standard_error`
-to `false`.
+Configuring retry/redrive for all `StandardErrors`:
+
+```ruby
+Aws::ActiveJob::SQS.configure do |config|
+  config.poller_error_handler do |_exception, _sqs_message|
+    # no-op, don't delete the message or re-raise the exception
+  end
+end
+```
+
+Configuring different behavior for different exceptions:
+
+```ruby
+module MyErrorHandlers
+  HANDLE_ERRORS = proc do |exception, sqs_message|
+    case exception
+    when MyRetryableException
+      # no-op, don't delete message
+    when MyTerminalException
+      # delete the message, preventing retry
+      sqs_message.delete
+    else
+      # unhandled exceptions, re-raise the exception to terminate the poller
+      raise exception
+    end
+  end
+end
+
+Aws::ActiveJob::SQS.configure do |config|
+  config.poller_error_handler = MyErrorHandlers::HANDLE_ERRORS
+end
+```
+
 
 When using the Async adapter, you may want to configure a
 `async_queue_error_handler` to handle errors that may occur when queuing jobs. 
