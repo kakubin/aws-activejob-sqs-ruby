@@ -100,12 +100,11 @@ module Aws
         # run in the @error_handler_thread
         def handle_errors
           # wait until errors are placed in the error queue
-          while ( (exception, message) = @error_queue.pop)
-            if @error_handler
-              @error_handler.call(exception, message)
-            else
-              raise exception
-            end
+          while ((exception, message) = @error_queue.pop)
+            raise exception unless @error_handler
+
+            @error_handler.call(exception, message)
+
           end
         rescue StandardError => e
           @logger.info("Unhandled exception executing jobs in poller: #{e}.")
