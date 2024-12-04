@@ -42,18 +42,18 @@ module Aws
           poll
         rescue Interrupt
           @logger.info 'Process Interrupted or killed - attempting to shutdown cleanly.'
-          shutdown
+          shutdown(config.shutdown_timeout)
           exit
         end
 
         private
 
-        def shutdown
-          @executor.shutdown(Aws::ActiveJob::SQS.config.shutdown_timeout)
+        def shutdown(timeout)
+          @executor.shutdown(timeout)
         end
 
         def poll
-          config = Aws::ActiveJob::SQS.config
+          config = Configuration.new(@options)
           queue = @options[:queue]
           queue_url = config.url_for(queue)
           @poller = Aws::SQS::QueuePoller.new(queue_url, client: config.client)
