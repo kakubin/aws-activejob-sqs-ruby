@@ -13,7 +13,7 @@ adapters for Amazon Simple Queue Service (SQS).
 Add this gem to your Rails project's Gemfile:
 
 ```ruby
-gem 'aws-sdk-rails', '~> 4'
+gem 'aws-sdk-rails', '~> 5'
 gem 'aws-activejob-sqs', '~> 0'
 ```
 
