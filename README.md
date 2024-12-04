@@ -269,9 +269,6 @@ require_relative 'config/environment' # load rails
 # To use this file, set CMD:  app.Aws::ActiveJob::SQS.config.lambda_job_handler
 ```
 
-As an alternative, if you do not need a full Rails environment, you can
-configure and run the Poller. 
-
 ### Using FIFO queues
 
 If the order in which your jobs executes is important, consider using a
