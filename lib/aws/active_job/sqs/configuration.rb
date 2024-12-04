@@ -57,7 +57,6 @@ module Aws
           max_messages: 10,
           shutdown_timeout: 15,
           queues: {},
-          logger: defined?(::Rails) ? ::Rails.logger : ActiveSupport::Logger.new($stdout),
           message_group_id: 'ActiveJobSqsGroup',
           excluded_deduplication_keys: ['job_id']
         }.freeze
@@ -150,7 +149,7 @@ module Aws
         def initialize(options = {})
           opts = env_options.deep_merge(options)
           opts = file_options(opts).deep_merge(opts)
-          opts = DEFAULTS.merge(opts)
+          opts = DEFAULTS.merge(logger: default_logger).merge(opts)
 
           set_attributes(opts)
         end
@@ -285,6 +284,10 @@ module Aws
           rescue ArgumentError
             YAML.safe_load(source) || {}
           end
+        end
+
+        def default_logger
+          defined?(::Rails) ? ::Rails.logger : ActiveSupport::Logger.new($stdout)
         end
       end
     end
