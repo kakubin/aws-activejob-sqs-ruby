@@ -287,7 +287,11 @@ module Aws
         end
 
         def default_logger
-          defined?(::Rails) ? ::Rails.logger : ActiveSupport::Logger.new($stdout)
+          if defined?(::Rails)
+            ::Rails.logger
+          else
+            ActiveSupport::Logger.new($stdout)
+          end
         end
       end
     end
