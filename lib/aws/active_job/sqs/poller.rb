@@ -51,7 +51,7 @@ module Aws
         end
 
         def poll
-          config = Configuration.new(@options)
+          config = Aws::ActiveJob::SQS.config
           queue = @options[:queue]
           queue_url = config.url_for(queue)
           @poller = Aws::SQS::QueuePoller.new(queue_url, client: config.client)
