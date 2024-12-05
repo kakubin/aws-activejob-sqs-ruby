@@ -195,12 +195,12 @@ for documentation.
 ### Running workers - Polling for jobs
 
 To start processing jobs, you need to start a separate process
-(in additional to your Rails app) with `bin/aws_sqs_active_job`
+(in additional to your Rails app) with `bin/aws_active_job_sqs`
 (an executable script provided with this gem).  You need to specify the queue to
 process jobs from:
 
 ```sh
-RAILS_ENV=development bundle exec aws_sqs_active_job --queue default
+RAILS_ENV=development bundle exec aws_active_job_sqs --queue default
 ```
 
 To see a complete list of arguments use `--help`.
@@ -212,6 +212,17 @@ actively running jobs to finish before killing them.
 **Note**: When running in production, its recommended that use a process
 supervisor such as [foreman](https://github.com/ddollar/foreman), systemd,
 upstart, daemontools, launchd, runit, etc.
+
+### Running without Rails
+By default the `aws_active_job_sqs` script will require and boot rails
+using your `config/environment.rb`; however, you can start `aws_active_job_sqs`
+with `--no-rails` to run the poller without Rails.  You can specify an
+additional file that includes required Job/application definitions with
+`--require`.  Example:
+
+```sh
+bundle exec aws_active_job_sqs --queue default --no-rails --require my_jobs.rb
+```
 
 ### Serverless workers: Processing jobs using AWS Lambda
 

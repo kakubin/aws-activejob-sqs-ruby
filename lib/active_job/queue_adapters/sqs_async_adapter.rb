@@ -29,8 +29,7 @@ module ActiveJob
           Concurrent::Promises
             .future { super(job, body, send_message_opts) }
             .rescue do |e|
-              # TODO: should be config logger? fails
-              Rails.logger.error "Failed to queue job #{job}. Reason: #{e}"
+              Aws::ActiveJob::SQS.config.logger.error "Failed to queue job #{job}. Reason: #{e}"
               error_handler = Aws::ActiveJob::SQS.config.async_queue_error_handler
               error_handler&.call(e, job, send_message_opts)
             end

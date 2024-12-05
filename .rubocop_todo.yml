@@ -64,7 +64,7 @@ Style/Documentation:
 # SupportedStyles: single_quotes, double_quotes
 Style/StringLiterals:
   Exclude:
-    - 'bin/aws_sqs_active_job'
+    - 'bin/aws_active_job_sqs'
     - 'spec/dummy/config/application.rb'
 
 # Offense count: 7

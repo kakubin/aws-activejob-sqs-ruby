@@ -57,8 +57,7 @@ module Aws
           max_messages: 10,
           shutdown_timeout: 15,
           queues: {},
-          logger: ::Rails.logger,
-          message_group_id: 'SqsActiveJobGroup',
+          message_group_id: 'ActiveJobSqsGroup',
           excluded_deduplication_keys: ['job_id']
         }.freeze
 
@@ -150,7 +149,7 @@ module Aws
         def initialize(options = {})
           opts = env_options.deep_merge(options)
           opts = file_options(opts).deep_merge(opts)
-          opts = DEFAULTS.merge(opts)
+          opts = DEFAULTS.merge(logger: default_logger).merge(opts)
 
           set_attributes(opts)
         end
@@ -259,6 +258,8 @@ module Aws
         end
 
         def default_config_file
+          return unless defined?(::Rails)
+
           file = ::Rails.root.join("config/aws_active_job_sqs/#{::Rails.env}.yml")
           file = ::Rails.root.join('config/aws_active_job_sqs.yml') unless File.exist?(file)
           file
@@ -282,6 +283,14 @@ module Aws
             YAML.safe_load(source, aliases: true) || {}
           rescue ArgumentError
             YAML.safe_load(source) || {}
+          end
+        end
+
+        def default_logger
+          if defined?(::Rails)
+            ::Rails.logger
+          else
+            ActiveSupport::Logger.new($stdout)
           end
         end
       end
