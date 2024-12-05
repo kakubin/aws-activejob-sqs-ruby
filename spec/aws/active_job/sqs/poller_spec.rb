@@ -13,7 +13,7 @@ module Aws
 
         before do
           allow(ActiveSupport::Logger).to receive(:new).and_return(logger)
-          Aws::ActiveJob::SQS.config.client = sqs_client
+          allow_any_instance_of(Configuration).to receive(:client).and_return(sqs_client)
         end
 
         describe '#initialize' do
