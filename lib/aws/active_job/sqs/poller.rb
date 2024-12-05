@@ -22,8 +22,6 @@ module Aws
             end
           end
 
-          validate_config
-
           config = Aws::ActiveJob::SQS.config
 
           # ensure we have a logger configured
@@ -89,10 +87,6 @@ module Aws
                                 ))
             end
           end
-        end
-
-        def validate_config
-          raise ArgumentError, 'You must specify the name of the queue to process jobs from' unless @options[:queue]
         end
       end
     end
