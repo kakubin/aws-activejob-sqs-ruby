@@ -92,7 +92,7 @@ module Aws
 
         def self.queues_option(opts, out)
           opts.on('-q', '--queue STRING', 'Queue(s) to poll. You may specify this argument multiple times to poll multiple queues.  If not specified, will start pollers for all queues defined.') do |a|
-            out[:queues] << a
+            out[:queues] << a.to_sym
           end
         end
       end
