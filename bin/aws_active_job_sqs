@@ -6,7 +6,6 @@ require_relative '../lib/aws/active_job/sqs/cli_options'
 require_relative '../lib/aws/active_job/sqs/poller'
 
 opts = Aws::ActiveJob::SQS::CliOptions.parse(ARGV)
-puts opts
 
 if opts[:boot_rails]
   require 'rails'
