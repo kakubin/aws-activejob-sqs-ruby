@@ -92,13 +92,12 @@ module Aws
             end
           end
           poller_threads.each(&:join)
-
         end
 
         def validate_config(queue)
-          unless Aws::ActiveJob::SQS.config.queues[queue.to_sym]&.fetch(:url)
-            raise ArgumentError, "No URL configured for queue #{queue}"
-          end
+          return if Aws::ActiveJob::SQS.config.queues[queue.to_sym]&.fetch(:url, nil)
+
+          raise ArgumentError, "No URL configured for queue #{queue}"
         end
 
         def poller_options(queue)
