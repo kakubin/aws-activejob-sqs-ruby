@@ -335,3 +335,7 @@ FIFO queues require a message group id to be provided for the job. It is determi
 1. Calling `message_group_id` on the job if it is defined
 2. If `message_group_id` is not defined or the result is `nil`, the default value will be used.
 You can optionally specify a custom value in your config as the default that will be used by all jobs.
+
+
+## Job Iteration (interruptible and resumable jobs)
+AWS Activejob SQS is supported as an interrupt adaptor by [job-iteration](https://github.com/Shopify/job-iteration).

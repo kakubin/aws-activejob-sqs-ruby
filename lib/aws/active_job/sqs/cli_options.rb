@@ -18,6 +18,20 @@ module Aws
         :queues,
         keyword_init: true
       ) do
+
+        def self.option_parser(out)
+          ::OptionParser.new do |opts|
+            queues_option(opts, out)
+            threads_option(opts, out)
+            backpressure_option(opts, out)
+            max_messages_option(opts, out)
+            visibility_timeout_option(opts, out)
+            shutdown_timeout_option(opts, out)
+            boot_rails_option(opts, out)
+            require_option(opts, out)
+          end
+        end
+
         def self.parse(argv)
           out = new(boot_rails: true)
           parser = option_parser(out)
@@ -101,19 +115,6 @@ module Aws
           opts.on('-q', '--queue STRING', doc) do |a|
             out[:queues] << a.to_sym
           end
-        end
-      end
-
-      def self.option_parser(out)
-        ::OptionParser.new do |opts|
-          queues_option(opts, out)
-          threads_option(opts, out)
-          backpressure_option(opts, out)
-          max_messages_option(opts, out)
-          visibility_timeout_option(opts, out)
-          shutdown_timeout_option(opts, out)
-          boot_rails_option(opts, out)
-          require_option(opts, out)
         end
       end
     end
