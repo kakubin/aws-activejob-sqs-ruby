@@ -27,28 +27,39 @@ module ActiveJob
       def enqueue_all(jobs)
         enqueued_count = 0
         jobs.group_by(&:queue_name).each do |queue_name, same_queue_jobs|
-          queue_url = Aws::ActiveJob::SQS.config.url_for(queue_name)
-          base_send_message_opts = { queue_url: queue_url }
-
-          same_queue_jobs.each_slice(10) do |chunk|
-            entries = chunk.map do |job|
-              entry = Params.new(job, nil).entry
-              entry[:id] = job.job_id
-              entry[:delay_seconds] = Params.assured_delay_seconds(job.scheduled_at) if job.scheduled_at
-              entry
-            end
-
-            send_message_opts = base_send_message_opts.deep_dup
-            send_message_opts[:entries] = entries
-
-            send_message_batch_result = Aws::ActiveJob::SQS.config.client.send_message_batch(send_message_opts)
-            enqueued_count += send_message_batch_result.successful.count
-          end
+          enqueued_count += enqueue_batches(queue_name, same_queue_jobs)
         end
         enqueued_count
       end
 
       private
+
+      def enqueue_batches(queue_name, same_queue_jobs)
+        enqueued_count = 0
+        queue_url = Aws::ActiveJob::SQS.config.url_for(queue_name)
+
+        same_queue_jobs.each_slice(10) do |chunk|
+          enqueued_count += enqueue_batch(queue_url, chunk)
+        end
+        enqueued_count
+      end
+
+      def enqueue_batch(queue_url, chunk)
+        entries = chunk.map do |job|
+          entry = Params.new(job, nil).entry
+          entry[:id] = job.job_id
+          entry[:delay_seconds] = Params.assured_delay_seconds(job.scheduled_at) if job.scheduled_at
+          entry
+        end
+
+        send_message_opts = {
+          queue_url: queue_url,
+          entries: entries
+        }
+
+        send_message_batch_result = Aws::ActiveJob::SQS.config.client.send_message_batch(send_message_opts)
+        send_message_batch_result.successful.count
+      end
 
       def _enqueue(job, body = nil, send_message_opts = {})
         body ||= job.serialize

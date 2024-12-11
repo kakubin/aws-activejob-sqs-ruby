@@ -12,10 +12,12 @@ module Aws
         def lambda_job_handler(event:, context:)
           return 'no records to process' unless event['Records']
 
+          puts "lambda_job_handler running for #{event} with context: #{context}"
+
           event['Records'].each do |record|
             sqs_msg = to_sqs_msg(record)
             job = Aws::ActiveJob::SQS::JobRunner.new(sqs_msg)
-            puts("Running job: #{job.id}[#{job.class_name}]")
+            puts "Running job: #{job.id}[#{job.class_name}]"
             job.run
             sqs_msg.delete
           end

@@ -17,17 +17,9 @@ module Aws
         end
 
         def run
-          Aws::ActiveJob::SQS.configure do |cfg|
-            @options.each_pair do |key, value|
-              cfg.send(:"#{key}=", value) if cfg.respond_to?(:"#{key}=")
-            end
-          end
+          init_config
 
           config = Aws::ActiveJob::SQS.config
-
-          # ensure we have a logger configured
-          @logger = config.logger || ActiveSupport::Logger.new($stdout)
-          @logger.info("Starting Poller with config=#{config.to_h}")
 
           Signal.trap('INT') { raise Interrupt }
           Signal.trap('TERM') { raise Interrupt }
@@ -46,6 +38,19 @@ module Aws
         end
 
         private
+
+        def init_config
+          Aws::ActiveJob::SQS.configure do |cfg|
+            @options.each_pair do |key, value|
+              cfg.send(:"#{key}=", value) if cfg.respond_to?(:"#{key}=")
+            end
+          end
+
+          # ensure we have a logger configured
+          config = Aws::ActiveJob::SQS.config
+          @logger = config.logger || ActiveSupport::Logger.new($stdout)
+          @logger.info("Starting Poller with config=#{config.to_h}")
+        end
 
         def shutdown(timeout)
           @executor.shutdown(timeout)
@@ -119,21 +124,27 @@ module Aws
         end
 
         def _poll(poller_options, queue_url)
-          config = Aws::ActiveJob::SQS.config
-          client = config.client
-          poller = Aws::SQS::QueuePoller.new(queue_url, client: client)
+          poller = Aws::SQS::QueuePoller.new(
+            queue_url,
+            client: Aws::ActiveJob::SQS.config.client
+          )
           single_message = poller_options[:max_number_of_messages] == 1
           poller.poll(poller_options) do |msgs|
             msgs = [msgs] if single_message
-            @logger.info "Processing batch of #{msgs.length} messages"
-            msgs.each do |msg|
-              @executor.execute(Aws::SQS::Message.new(
-                                  queue_url: queue_url,
-                                  receipt_handle: msg.receipt_handle,
-                                  data: msg,
-                                  client: client
-                                ))
-            end
+            execute_messages(msgs, queue_url)
+          end
+        end
+
+        def execute_messages(msgs, queue_url)
+          @logger.info "Processing batch of #{msgs.length} messages"
+          msgs.each do |msg|
+            sqs_message = Aws::SQS::Message.new(
+              queue_url: queue_url,
+              receipt_handle: msg.receipt_handle,
+              data: msg,
+              client: Aws::ActiveJob::SQS.config.client
+            )
+            @executor.execute(sqs_message)
           end
         end
       end

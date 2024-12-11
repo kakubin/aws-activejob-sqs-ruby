@@ -80,22 +80,30 @@ module Aws
         end
 
         def post_task(message)
-          @executor.post(message) do |message|
-            job = JobRunner.new(message)
-            @logger.info("Running job: #{job.id}[#{job.class_name}]")
-            job.run
-            message.delete
-          rescue JSON::ParserError => e
-            @logger.error "Unable to parse message body: #{message.data.body}. Error: #{e}."
-          rescue StandardError => e
-            job_msg = job ? "#{job.id}[#{job.class_name}]" : 'unknown job'
-            @logger.info "Error processing job #{job_msg}: #{e}"
-            @logger.debug e.backtrace.join("\n")
-
-            @error_queue.push([e, message])
-          ensure
-            @task_complete.set
+          @executor.post(message) do |msg|
+            execute_task(msg)
           end
+        end
+
+        def execute_task(message)
+          job = JobRunner.new(message)
+          @logger.info("Running job: #{job.id}[#{job.class_name}]")
+          job.run
+          message.delete
+        rescue JSON::ParserError => e
+          @logger.error "Unable to parse message body: #{message.data.body}. Error: #{e}."
+        rescue StandardError => e
+          handle_standard_error(e, job, message)
+        ensure
+          @task_complete.set
+        end
+
+        def handle_standard_error(error, job, message)
+          job_msg = job ? "#{job.id}[#{job.class_name}]" : 'unknown job'
+          @logger.info "Error processing job #{job_msg}: #{error}"
+          @logger.debug error.backtrace.join("\n")
+
+          @error_queue.push([error, message])
         end
 
         def run_hooks_for(event_name)

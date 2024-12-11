@@ -80,6 +80,9 @@ module Aws
 
         QUEUE_CONFIGS = QUEUE_ENV_CONFIGS + %i[excluded_deduplication_keys]
 
+        QUEUE_KEY_REGEX =
+          /AWS_ACTIVE_JOB_SQS_([\w]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/.freeze
+
         # Don't use this method directly: Configuration is a singleton class,
         # use {Aws::ActiveJob::SQS.config Aws::ActiveJob::SQS.config}
         # to access the singleton config instance and use
@@ -151,17 +154,17 @@ module Aws
           opts = file_options(opts).deep_merge(opts)
           opts = DEFAULTS.merge(logger: default_logger).merge(opts)
 
-          set_attributes(opts)
+          apply_attributes(opts)
         end
 
         # @api private
         attr_accessor :queues, :threads, :backpressure,
-                      :shutdown_timeout, :client, :logger,
+                      :shutdown_timeout, :logger,
                       :async_queue_error_handler
 
         # @api private
         attr_writer :max_messages, :message_group_id, :visibility_timeout,
-                    :poller_error_handler
+                    :poller_error_handler, :client
 
         def excluded_deduplication_keys=(keys)
           @excluded_deduplication_keys = keys.map(&:to_s) | ['job_id']
@@ -212,7 +215,7 @@ module Aws
         end
 
         # Set accessible attributes after merged options.
-        def set_attributes(options)
+        def apply_attributes(options)
           options.each_key do |opt_name|
             instance_variable_set("@#{opt_name}", options[opt_name])
             client.config.user_agent_frameworks << 'aws-activejob-sqs' if opt_name == :client
@@ -222,23 +225,27 @@ module Aws
         # resolve ENV for global and queue specific options
         def env_options
           resolved = { queues: {} }
-          GLOBAL_ENV_CONFIGS.each do |cfg|
-            env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
-            resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
-          end
+          resolve_global_env_options(resolved)
+          resolve_queue_env__options(resolved)
+          resolved
+        end
 
-          # check for queue specific values
-          queue_key_regex =
-            /AWS_ACTIVE_JOB_SQS_([\w]+)_(#{QUEUE_ENV_CONFIGS.map(&:upcase).join('|')})/
+        def resolve_queue_env__options(resolved)
           ENV.each_key do |key|
-            next unless (match = queue_key_regex.match(key))
+            next unless (match = QUEUE_KEY_REGEX.match(key))
 
             queue_name = match[1].downcase.to_sym
             resolved[:queues][queue_name] ||= {}
             resolved[:queues][queue_name][match[2].downcase.to_sym] =
               parse_env_value(key)
           end
-          resolved
+        end
+
+        def resolve_global_env_options(resolved)
+          GLOBAL_ENV_CONFIGS.each do |cfg|
+            env_name = "AWS_ACTIVE_JOB_SQS_#{cfg.to_s.upcase}"
+            resolved[cfg] = parse_env_value(env_name) if ENV.key? env_name
+          end
         end
 
         def parse_env_value(key)

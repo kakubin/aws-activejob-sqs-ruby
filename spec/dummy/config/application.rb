@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails'
-require "action_controller/railtie"
+require 'action_controller/railtie'
 require 'active_job/railtie'
 
 require 'aws-activejob-sqs'

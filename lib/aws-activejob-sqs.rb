@@ -12,6 +12,7 @@ require_relative 'aws/active_job/sqs/lambda_handler'
 
 module Aws
   module ActiveJob
+    # ActiveJob Adapter and backend queueing using AWS SQS.
     module SQS
       VERSION = File.read(File.expand_path('../VERSION', __dir__)).strip
 
