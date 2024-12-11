@@ -197,7 +197,9 @@ for documentation.
 To start processing jobs, you need to start a separate process
 (in additional to your Rails app) with `bin/aws_active_job_sqs`
 (an executable script provided with this gem). You can poll for one or multiple
-queues using the `--queue` argument(s). You can  specify multiple queues 
+queues using the `--queue` argument(s). 
+
+You can specify multiple queues 
 in the arguments by passing`--queue` multiple times 
 (eg `--queue queue_1 --queue queue_2`) or for all configured queues by 
 providing no queue arguments. When multiple queues are specified, 1 thread 
