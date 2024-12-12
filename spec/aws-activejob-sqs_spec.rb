@@ -22,13 +22,13 @@ module Aws
       describe '.configure' do
         it 'allows configuration through a block' do
           Aws::ActiveJob::SQS.configure do |config|
-            config.visibility_timeout = 360
-            config.excluded_deduplication_keys = [:job_class]
+            config.threads = 3
+            config.backpressure = 5
           end
 
           expect(Aws::ActiveJob::SQS.config).to have_attributes(
-            visibility_timeout: 360,
-            excluded_deduplication_keys: contain_exactly('job_class', 'job_id')
+            threads: 3,
+            backpressure: 5
           )
         end
       end

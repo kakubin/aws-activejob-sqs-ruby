@@ -58,7 +58,7 @@ module ActiveJob
       end
 
       it 'queues jobs to fifo queues synchronously' do
-        allow(Aws::ActiveJob::SQS.config).to receive(:queue_url_for)
+        allow(Aws::ActiveJob::SQS.config).to receive(:url_for)
           .and_return('https://queue-url.fifo')
         expect(Concurrent::Promises).not_to receive(:future)
         expect(client).to receive(:send_message)

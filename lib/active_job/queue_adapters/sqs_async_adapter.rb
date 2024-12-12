@@ -19,7 +19,7 @@ module ActiveJob
 
       def _enqueue(job, body = nil, send_message_opts = {})
         # FIFO jobs must be queued in order, so do not queue async
-        queue_url = Aws::ActiveJob::SQS.config.queue_url_for(job.queue_name)
+        queue_url = Aws::ActiveJob::SQS.config.url_for(job.queue_name)
         if Aws::ActiveJob::SQS.fifo?(queue_url)
           super
         else
@@ -29,8 +29,7 @@ module ActiveJob
           Concurrent::Promises
             .future { super(job, body, send_message_opts) }
             .rescue do |e|
-              # TODO: should be config logger? fails
-              Rails.logger.error "Failed to queue job #{job}. Reason: #{e}"
+              Aws::ActiveJob::SQS.config.logger.error "Failed to queue job #{job}. Reason: #{e}"
               error_handler = Aws::ActiveJob::SQS.config.async_queue_error_handler
               error_handler&.call(e, job, send_message_opts)
             end

@@ -13,8 +13,8 @@ adapters for Amazon Simple Queue Service (SQS).
 Add this gem to your Rails project's Gemfile:
 
 ```ruby
+gem 'aws-activejob-sqs', '~> 1'
 gem 'aws-sdk-rails', '~> 5'
-gem 'aws-activejob-sqs', '~> 0'
 ```
 
 Then run `bundle install`.
@@ -44,6 +44,8 @@ config.active_job.queue_adapter = :sqs
 To use the non-blocking (async) adapter, set `active_job.queue_adapter` to
 `:sqs_async`. If you have a lot of jobs to queue or you need to avoid the extra
 latency from an SQS call in your request then consider using the async adapter.
+When using the Async adapter, you may want to configure a
+`async_queue_error_handler` to handle errors that may occur when queuing jobs.
 
 ```ruby
 # config/environments/production.rb
@@ -62,20 +64,26 @@ end
 You also need to configure a mapping of ActiveJob queue names to SQS Queue URLs:
 
 ```yaml
-# config/aws_sqs_active_job.yml
+# config/aws_active_job_sqs.yml
+backpressure: 5 # configure global options for poller
+max_messages: 3
 queues:
-  default: 'https://my-queue-url.amazon.aws'
+  default: 
+    url: 'https://my-queue-url.amazon.aws'
+    max_messages: 2 # queue specific values override global values
 ```
 
 For a complete list of configuration options see the
 [Aws::ActiveJob::SQS::Configuration](https://docs.aws.amazon.com/sdk-for-ruby/aws-activejob-sqs/api/Aws/ActiveJob/SQS/Configuration.html)
 documentation.
 
-You can configure SQS Active Job either through the yaml file or
+You can configure SQS Active Job either through the environment, yaml file or
 through code in your `config/<env>.rb` or initializers.
 
 For file based configuration, you can use either
-`config/aws_sqs_active_job/<Rails.env>.yml` or `config/aws_sqs_active_job.yml`.
+`config/aws_active_job_sqs/<Rails.env>.yml` or `config/aws_active_job_sqs.yml`.
+You may specify the file used through the `:config_file` option in code or the
+`AWS_ACTIVE_JOB_SQS_CONFIG_FILE` environment variable.
 The yaml files support ERB.
 
 To configure in code:
@@ -86,6 +94,21 @@ Aws::ActiveJob::SQS.configure do |config|
   config.max_messages = 5
   config.client = Aws::SQS::Client.new(region: 'us-east-1')
 end
+```
+
+SQS Active Job loads global and queue specific values from your
+environment. Global keys take the form of:
+`AWS_ACTIVE_JOB_SQS_<KEY_NAME>` and queue specific keys take the
+form of: `AWS_ACTIVE_JOB_SQS_<QUEUE_NAME>_<KEY_NAME>`.
+<QUEUE_NAME> is case-insensitive and is always down cased. Configuring
+non-snake case queues (containing upper case) through ENV is
+not supported.
+
+Example:
+
+```shell
+export AWS_ACTIVE_JOB_SQS_MAX_MESSAGES = 5
+export AWS_ACTIVE_JOB_SQS_DEFAULT_URL = https://my-queue.aws
 ```
 
 ## Usage
@@ -115,19 +138,59 @@ When configured, ActiveJob will catch the exception and reschedule the job for
 re-execution after the configured delay. This will delete the original
 message from the SQS queue and requeue a new message.
 
-By default SQS ActiveJob is configured with `retry_standard_error` set to `true`
-and will not delete messages for jobs that raise a `StandardError` and that do
-not handle that error via `retry_on` or `discard_on`. These job messages will
-remain on the queue and will be re-read and retried following the SQS Queue's
-configured
-[retry and DLQ settings](https://docs.aws.amazon.com/lambda/latest/operatorguide/sqs-retries.html).
+By default, any `StandardError` raised during job execution will leave the message
+on the queue (retrying it later) and initiate shutdown for the poller 
+and it will attempt to finish executing any in progress jobs. 
+
+You can configure an error handler block for the ActiveJob SQS poller with 
+`poller_error_handler`. Jobs that raise a `StandardError` and that do
+not handle that error via `retry_on` or `discard_on` will call the configured
+`poller_error_handler` with `|exception, sqs_message|`.
+You may re-raise the exception to terminate the poller. You may also choose 
+whether to delete the sqs_message or not.  If the message is not explicitly 
+deleted then the message will be left on the queue and will be retried
+following the SQS Queue's configured
+[retry and DLQ settings](https://docs.aws.amazon.com/lambda/latest/operatorguide/sqs-retries.html). 
+Retries provided by this mechanism are after any retries configured on the job
+with `retry_on`.
+
 If you do not have a DLQ configured, the message will continue to be attempted
 until it reaches the queues retention period.  In general, it is a best practice
 to configure a DLQ to store unprocessable jobs for troubleshooting and re-drive.
 
-If you want failed jobs that do not have `retry_on` or `discard_on` configured
-to be immediately discarded and not left on the queue, set `retry_standard_error`
-to `false`.
+Configuring retry/redrive for all `StandardErrors`:
+
+```ruby
+Aws::ActiveJob::SQS.configure do |config|
+  config.poller_error_handler do |_exception, _sqs_message|
+    # no-op, don't delete the message or re-raise the exception
+  end
+end
+```
+
+Configuring different behavior for different exceptions:
+
+```ruby
+module MyErrorHandlers
+  HANDLE_ERRORS = proc do |exception, sqs_message|
+    case exception
+    when MyRetryableException
+      # no-op, don't delete message
+    when MyTerminalException
+      # delete the message, preventing retry
+      sqs_message.delete
+    else
+      # unhandled exceptions, re-raise the exception to terminate the poller
+      raise exception
+    end
+  end
+end
+
+Aws::ActiveJob::SQS.configure do |config|
+  config.poller_error_handler = MyErrorHandlers::HANDLE_ERRORS
+end
+```
+
 
 When using the Async adapter, you may want to configure a
 `async_queue_error_handler` to handle errors that may occur when queuing jobs. 
@@ -138,12 +201,24 @@ for documentation.
 ### Running workers - Polling for jobs
 
 To start processing jobs, you need to start a separate process
-(in additional to your Rails app) with `bin/aws_sqs_active_job`
-(an executable script provided with this gem).  You need to specify the queue to
-process jobs from:
+(in additional to your Rails app) with the `aws_active_job_sqs`
+executable script provided with this gem, eg: 
+`bundle exec aws_active_job_sqs --queue default`. 
+You can poll for one or multiple queues using the `--queue` argument(s). 
+
+You can specify multiple queues 
+in the arguments by passing`--queue` multiple times 
+(eg `--queue queue_1 --queue queue_2`) or for all configured queues by 
+providing no queue arguments. When multiple queues are specified, 1 thread 
+per queue is started to run the poller for that queue. All queues share a 
+single, common thread pool for executing jobs.
+
+It is generally recommended to start one polling process per queue instead of
+running a single poller for all queues as this generally allows you to better
+manage the resources used.
 
 ```sh
-RAILS_ENV=development bundle exec aws_sqs_active_job --queue default
+RAILS_ENV=development bundle exec aws_active_job_sqs --queue default
 ```
 
 To see a complete list of arguments use `--help`.
@@ -155,6 +230,17 @@ actively running jobs to finish before killing them.
 **Note**: When running in production, its recommended that use a process
 supervisor such as [foreman](https://github.com/ddollar/foreman), systemd,
 upstart, daemontools, launchd, runit, etc.
+
+### Running without Rails
+By default the `aws_active_job_sqs` script will require and boot rails
+using your `config/environment.rb`; however, you can start `aws_active_job_sqs`
+with `--no-rails` to run the poller without Rails.  You can specify an
+additional file that includes required Job/application definitions with
+`--require`.  Example:
+
+```sh
+bundle exec aws_active_job_sqs --queue default --no-rails --require my_jobs.rb
+```
 
 ### Serverless workers: Processing jobs using AWS Lambda
 
@@ -247,7 +333,7 @@ executions, exception_executions, locale, timezone, enqueued_at
 
 Note that `job_id` is NOT included in deduplication keys because it is unique
 for each initialization of the job, and the run-once behavior must be guaranteed
-for ActiveJob retries. Even without setting job_id, it is implicitly excluded
+for ActiveJob retries. Even without setting `job_id`, it is implicitly excluded
 from deduplication keys.
 
 #### Message Group IDs
@@ -256,3 +342,7 @@ FIFO queues require a message group id to be provided for the job. It is determi
 1. Calling `message_group_id` on the job if it is defined
 2. If `message_group_id` is not defined or the result is `nil`, the default value will be used.
 You can optionally specify a custom value in your config as the default that will be used by all jobs.
+
+
+## Job Iteration (interruptible and resumable jobs)
+AWS Activejob SQS is supported as an interrupt adaptor by [job-iteration](https://github.com/Shopify/job-iteration).

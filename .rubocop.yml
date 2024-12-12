@@ -1,5 +1,3 @@
-inherit_from: .rubocop_todo.yml
-
 AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
@@ -10,15 +8,33 @@ AllCops:
 Gemspec/RequireMFA:
   Enabled: false
 
-Metrics/BlockLength:
-  Exclude:
-    - 'spec/**/*.rb'
-
 Naming/FileName:
   Exclude:
     - 'lib/aws-activejob-sqs.rb'
     - 'spec/aws-activejob-sqs_spec.rb'
 
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*.rb'
+
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/MethodLength:
+  Max: 15
+
+Metrics/ModuleLength:
+  Exclude:
+    - 'spec/**/*'
+
 Style/BlockComments:
   Exclude:
     - 'spec/spec_helper.rb'
+
+
+Style/Documentation:
+  Exclude:
+    - 'spec/**/*'
+    - 'lib/aws/active_job/sqs/cli_options.rb'
+    - 'lib/aws/active_job/sqs/deduplication.rb'
+    - 'lib/aws/active_job/sqs/lambda_handler.rb'
