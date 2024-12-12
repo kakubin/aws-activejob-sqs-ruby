@@ -32,7 +32,7 @@ module Aws
         end
 
         def self.parse(argv)
-          out = new(boot_rails: true)
+          out = new(boot_rails: true, queues: [])
           parser = option_parser(out)
 
           parser.banner = 'aws_active_job_sqs [options]'
