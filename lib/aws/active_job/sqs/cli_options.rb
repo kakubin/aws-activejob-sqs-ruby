@@ -18,7 +18,6 @@ module Aws
         :queues,
         keyword_init: true
       ) do
-
         def self.option_parser(out)
           ::OptionParser.new do |opts|
             queues_option(opts, out)

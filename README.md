@@ -44,6 +44,8 @@ config.active_job.queue_adapter = :sqs
 To use the non-blocking (async) adapter, set `active_job.queue_adapter` to
 `:sqs_async`. If you have a lot of jobs to queue or you need to avoid the extra
 latency from an SQS call in your request then consider using the async adapter.
+When using the Async adapter, you may want to configure a
+`async_queue_error_handler` to handle errors that may occur when queuing jobs.
 
 ```ruby
 # config/environments/production.rb
@@ -80,7 +82,7 @@ through code in your `config/<env>.rb` or initializers.
 
 For file based configuration, you can use either
 `config/aws_active_job_sqs/<Rails.env>.yml` or `config/aws_active_job_sqs.yml`.
-You may specify the file used  through the `:config_file` option in code or the
+You may specify the file used through the `:config_file` option in code or the
 `AWS_ACTIVE_JOB_SQS_CONFIG_FILE` environment variable.
 The yaml files support ERB.
 
@@ -136,9 +138,13 @@ When configured, ActiveJob will catch the exception and reschedule the job for
 re-execution after the configured delay. This will delete the original
 message from the SQS queue and requeue a new message.
 
+By default, any `StandardError` raised during job execution will leave the message
+on the queue (retrying it later) and initiate shutdown for the poller 
+and it will attempt to finish executing any in progress jobs. 
+
 You can configure an error handler block for the ActiveJob SQS poller with 
 `poller_error_handler`. Jobs that raise a `StandardError` and that do
-not handle that error via `retry_on` or `discard_on` will be call the configured
+not handle that error via `retry_on` or `discard_on` will call the configured
 `poller_error_handler` with `|exception, sqs_message|`.
 You may re-raise the exception to terminate the poller. You may also choose 
 whether to delete the sqs_message or not.  If the message is not explicitly 
@@ -195,9 +201,10 @@ for documentation.
 ### Running workers - Polling for jobs
 
 To start processing jobs, you need to start a separate process
-(in additional to your Rails app) with `bin/aws_active_job_sqs`
-(an executable script provided with this gem). You can poll for one or multiple
-queues using the `--queue` argument(s). 
+(in additional to your Rails app) with the `aws_active_job_sqs`
+executable script provided with this gem, eg: 
+`bundle exec aws_active_job_sqs --queue default`. 
+You can poll for one or multiple queues using the `--queue` argument(s). 
 
 You can specify multiple queues 
 in the arguments by passing`--queue` multiple times 
@@ -326,7 +333,7 @@ executions, exception_executions, locale, timezone, enqueued_at
 
 Note that `job_id` is NOT included in deduplication keys because it is unique
 for each initialization of the job, and the run-once behavior must be guaranteed
-for ActiveJob retries. Even without setting job_id, it is implicitly excluded
+for ActiveJob retries. Even without setting `job_id`, it is implicitly excluded
 from deduplication keys.
 
 #### Message Group IDs

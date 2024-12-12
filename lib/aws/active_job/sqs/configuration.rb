@@ -56,7 +56,7 @@ module Aws
           backpressure: 10,
           max_messages: 10,
           shutdown_timeout: 15,
-          queues: {},
+          queues: Hash.new { |h, k| h[k] = {} },
           message_group_id: 'ActiveJobSqsGroup',
           excluded_deduplication_keys: ['job_id']
         }.freeze
@@ -152,7 +152,7 @@ module Aws
         def initialize(options = {})
           opts = env_options.deep_merge(options)
           opts = file_options(opts).deep_merge(opts)
-          opts = DEFAULTS.merge(logger: default_logger).merge(opts)
+          opts = DEFAULTS.merge(logger: default_logger).deep_merge(opts)
 
           apply_attributes(opts)
         end
