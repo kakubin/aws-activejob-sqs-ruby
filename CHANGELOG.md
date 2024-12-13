@@ -1,4 +1,4 @@
-Unreleased Changes
+1.0.0 (2024-12-13)
 ------------------
 
 * Feature - Support polling on multiple queues. (#4)
