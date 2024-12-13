@@ -278,13 +278,13 @@ as your entrypoint:
 require_relative 'config/environment' # load rails
 
 # Rails.config.custom....
-# Aws::ActiveJob::SQS.config....
+# Aws::ActiveJob::SQS.configure....
 
 # no need to write a handler yourself here, as long as
 # aws-sdk-rails is loaded, you can still use the
-# Aws::ActiveJob::SQS.config.lambda_job_handler
+# Aws::ActiveJob::SQS::LambdaHandler.job_handler
 
-# To use this file, set CMD:  app.Aws::ActiveJob::SQS.config.lambda_job_handler
+# To use this file, set CMD:  app.Aws::ActiveJob::SQS::LambdaHandler.job_handler
 ```
 
 ### Using FIFO queues
@@ -318,7 +318,7 @@ end
 
 # Or to set deduplication keys to exclude for a single job:
 class YourJob < ApplicationJob
-  include Aws::ActiveJob::SQS
+  include Aws::ActiveJob::SQS::Deduplication
   deduplicate_without :job_class, :arguments
   #...
 end

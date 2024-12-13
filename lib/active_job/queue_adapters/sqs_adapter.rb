@@ -8,7 +8,7 @@ module ActiveJob
     #
     # To use this adapter, set up as:
     #
-    #     config.active_job.queue_adapter = :sqs_async
+    #     config.active_job.queue_adapter = :sqs
     class SqsAdapter
       def enqueue_after_transaction_commit?
         # can be removed after Rails 8
