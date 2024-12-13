@@ -31,10 +31,6 @@ Style/BlockComments:
   Exclude:
     - 'spec/spec_helper.rb'
 
-
 Style/Documentation:
   Exclude:
     - 'spec/**/*'
-    - 'lib/aws/active_job/sqs/cli_options.rb'
-    - 'lib/aws/active_job/sqs/deduplication.rb'
-    - 'lib/aws/active_job/sqs/lambda_handler.rb'

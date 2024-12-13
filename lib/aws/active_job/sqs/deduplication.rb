@@ -3,16 +3,19 @@
 module Aws
   module ActiveJob
     module SQS
-      extend ActiveSupport::Concern
+      # Mixin module to configure job level deduplication keys
+      module Deduplication
+        extend ActiveSupport::Concern
 
-      included do
-        class_attribute :excluded_deduplication_keys
-      end
+        included do
+          class_attribute :excluded_deduplication_keys
+        end
 
-      # class methods for SQS ActiveJob.
-      module ClassMethods
-        def deduplicate_without(*keys)
-          self.excluded_deduplication_keys = keys.map(&:to_s) | ['job_id']
+        # class methods for SQS ActiveJob.
+        module ClassMethods
+          def deduplicate_without(*keys)
+            self.excluded_deduplication_keys = keys.map(&:to_s) | ['job_id']
+          end
         end
       end
     end

@@ -7,17 +7,7 @@ module Aws
     module SQS
       # options for the aws_active_job_sqs CLI.
       # @api private
-      CliOptions = Struct.new(
-        :boot_rails,
-        :threads,
-        :backpressure,
-        :max_messages,
-        :visibility_timeout,
-        :shutdown_timeout,
-        :require,
-        :queues,
-        keyword_init: true
-      ) do
+      module CliOptions
         def self.option_parser(out)
           ::OptionParser.new do |opts|
             queues_option(opts, out)
@@ -30,9 +20,10 @@ module Aws
             require_option(opts, out)
           end
         end
+        private_class_method :option_parser
 
         def self.parse(argv)
-          out = new(boot_rails: true, queues: [])
+          out = { boot_rails: true, queues: [] }
           parser = option_parser(out)
 
           parser.banner = 'aws_active_job_sqs [options]'
