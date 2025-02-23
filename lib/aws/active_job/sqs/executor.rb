@@ -44,8 +44,9 @@ module Aws
         end
 
         def execute(message)
+          ticker = Ticker.new(message)
           @post_mutex.synchronize do
-            _execute(message)
+            _execute(message, ticker)
           end
         end
 
@@ -70,8 +71,8 @@ module Aws
 
         private
 
-        def _execute(message)
-          post_task(message)
+        def _execute(message, ticker)
+          post_task(message, ticker)
         rescue Concurrent::RejectedExecutionError
           # no capacity, wait for a task to complete
           @task_complete.reset
@@ -79,16 +80,17 @@ module Aws
           retry
         end
 
-        def post_task(message)
-          @executor.post(message) do |msg|
-            execute_task(msg)
+        def post_task(message, ticker)
+          @executor.post(message, ticker) do |msg, tick|
+            execute_task(msg, tick)
           end
         end
 
-        def execute_task(message)
+        def execute_task(message, ticker)
           job = JobRunner.new(message)
           @logger.info("Running job: #{job.id}[#{job.class_name}]")
           job.run
+          ticker.finish
           message.delete
         rescue JSON::ParserError => e
           @logger.error "Unable to parse message body: #{message.data.body}. Error: #{e}."

@@ -7,6 +7,7 @@ require_relative 'active_job/queue_adapters/sqs_async_adapter'
 require_relative 'aws/active_job/sqs/configuration'
 require_relative 'aws/active_job/sqs/deduplication'
 require_relative 'aws/active_job/sqs/executor'
+require_relative 'aws/active_job/sqs/ticker'
 require_relative 'aws/active_job/sqs/job_runner'
 require_relative 'aws/active_job/sqs/lambda_handler'
 
